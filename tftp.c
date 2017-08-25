@@ -7,6 +7,8 @@
 
 #include "tftp.h"
 
+char filename[FILENAME_LEN];
+
 /**
  * Fills in the tftp_header_t struct
  */
