@@ -16,6 +16,18 @@
 #define PORT_LEN			6
 
 #define NETASCII_MODE		"netascii"
+#define OCTET_MODE			"octet"
+
+const char *const err_msgs[] = {
+		"Undefined",
+		"File not found",
+		"Access violation",
+		"Disk full or allocation exceeded",
+		"Illegal TFTP operation",
+		"Unknown transfer ID",
+		"File already exists",
+		"No such user"
+};
 
 typedef enum {
 	RRQ_OPCODE = 1,
