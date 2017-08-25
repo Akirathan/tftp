@@ -14,9 +14,7 @@
 #define MODENAME_LEN		8
 #define NON_PRIVILEGED_PORT	4567
 #define PORT_LEN			6
-
-#define NETASCII_MODE		"netascii"
-#define OCTET_MODE			"octet"
+#define DATA_LEN			512
 
 const char *const err_msgs[] = {
 		"Undefined",
@@ -37,12 +35,17 @@ typedef enum {
 	ERR_OPCODE = 5
 } opcode_t;
 
+typedef enum {
+	NETASCII_MODE,
+	OCTET_MODE
+} mode_t;
+
 typedef struct {
 	opcode_t opcode;
 	union {
 		struct {
 			char *filename;
-			char *mode;
+			mode_t mode;
 		} req_strings;
 
 		struct {
@@ -68,5 +71,9 @@ typedef struct {
 #define ack_blocknum	u.ack.block_num
 #define error_code		u.err.err_code
 #define error_msg		u.err.err_msg
+
+size_t header_len(tftp_header_t *hdr);
+void copy_to_buffer(tftp_header_t *hdr, uint8_t *buf);
+void read_packet(const uint8_t *packet, int packet_len, tftp_header_t *hdr);
 
 #endif /* TFTP_H_ */

@@ -23,87 +23,16 @@ char *host = "127.0.0.1";
 char *directory_path = "/home/mayfa/tftp_server";
 
 char filename[FILENAME_LEN];
-char modename[MODENAME_LEN];
+mode_t mode;
+int client_sock;
+struct sockaddr client_addr;
+socklen_t client_addr_len = sizeof(client_addr);
 
 void
 usage(char *program)
 {
 	fprintf(stderr, "Usage: %s [-h host] [-p port] directory", program);
 	exit(1);
-}
-
-int
-buffer_len(tftp_header_t *hdr)
-{
-
-}
-
-/**
- * Convert hdr to byte buffer - should be compared with packet sent by orig
- * client. Suppose buf has correct length.
- */
-void
-copy_to_buffer(tftp_header_t *hdr, uint8_t *buf)
-{
-	uint8_t *buf_idx = buf;
-
-	uint16_t opcode = htons(hdr->opcode);
-	/* Save opcode and "shift" two bytes. */
-	*((uint16_t *)buf_idx) = opcode;
-	buf_idx += 2;
-
-	switch (hdr->opcode) {
-	case RRQ_OPCODE:
-		/* Filename. */
-		strcpy(buf_idx, hdr->req_filename);
-		buf_idx += strlen(hdr->req_filename);
-		*buf_idx = '\0';
-		buf_idx++;
-		/* Modename. */
-		strcpy(buf_idx, hdr->req_mode);
-		buf_idx += strlen(hdr->req_mode);
-		*buf_idx = '\0';
-		break;
-	}
-}
-
-/**
- * Fills in the tftp_header_t struct
- */
-void
-read_packet(const uint8_t *packet, int packet_len, tftp_header_t *hdr)
-{
-	int i = 2, file_idx = 0, mode_idx = 0;
-
-	/* First two bytes are opcode. */
-	if (packet[0] != 0) {
-		hdr->opcode = ERR_OPCODE;
-	}
-	else {
-		hdr->opcode = packet[1];
-	}
-
-	switch (hdr->opcode) {
-	case RRQ_OPCODE:
-	case WRQ_OPCODE:
-		/* Extract filename. */
-		while (packet[i] != '\0') {
-			filename[file_idx++] = packet[i];
-			++i;
-		}
-		hdr->req_filename = filename;
-
-		++i;
-
-		/* Extract modename. */
-		while (packet[i] != '\0') {
-			modename[mode_idx++] = packet[i];
-			++i;
-		}
-		hdr->req_mode = modename;
-
-		break;
-	}
 }
 
 /**
@@ -122,6 +51,48 @@ resolve_service_by_privileges(char *service)
 }
 
 /**
+ * Converts header to buffer and sends it to the client.
+ */
+void
+send(tftp_header_t *hdr)
+{
+	size_t buf_len = header_len(hdr);
+	uint8_t buf[buf_len];
+
+	copy_to_buffer(hdr, buf);
+	if (sendto(client_sock, buf, buf_len, 0, &client_addr, client_addr_len) == -1)
+		err(EXIT_FAILURE, "sendto");
+}
+
+/**
+ * Client sent RRQ, server should now send first data packet from random
+ * port.
+ */
+void
+read_file(const char *filename)
+{
+	uint16_t block_num = 1;
+	tftp_header_t hdr;
+	FILE *file;
+	uint8_t buf[DATA_LEN], n;
+
+	if ((file = fopen(filename, "r")) == NULL)
+		err(EXIT_FAILURE, "fopen");
+
+	/* Send first DATA packet. */
+	hdr.data_blocknum = block_num;
+
+	while (n == DATA_LEN) {
+		if ((n = read(fileno(file), buf, DATA_LEN)) == -1)
+			err(EXIT_FAILURE, "read");
+
+		hdr.data_data = buf;
+		send(&hdr);
+		/* Wait for ACK. */
+	}
+}
+
+/**
  * Creates generic server that binds to IPv4 and IPv6.
  */
 void
@@ -130,8 +101,6 @@ generic_server()
 	int error, sockfd, n;
 	uint8_t buff[BUF_LEN];
 	char service[PORT_LEN];
-	struct sockaddr client_addr;
-	socklen_t client_addr_len = sizeof(client_addr);
 	struct addrinfo *res, hints;
 	struct protoent *udp_protocol;
 	tftp_header_t hdr;
