@@ -12,6 +12,12 @@ char filename[FILENAME_LEN];
 static tftp_mode_t mode_from_str(const char *str);
 static void str_from_mode(char *str, const tftp_mode_t mode);
 
+static tftp_mode_t
+mode_from_str(const char *str)
+{
+
+}
+
 /**
  * Converts given mode to string.
  */
@@ -28,6 +34,14 @@ str_from_mode(char *str, const tftp_mode_t mode)
 	}
 }
 
+/**
+ * Calculates length of the tftp_header_t.
+ */
+size_t
+header_len(tftp_header_t *hdr)
+{
+
+}
 
 /**
  * Fills in the tftp_header_t struct
@@ -65,7 +79,7 @@ read_packet(const uint8_t *packet, int packet_len, tftp_header_t *hdr)
  * client. Suppose buf has correct length.
  */
 void
-copy_to_buffer(tftp_header_t *hdr, uint8_t *buf)
+copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 {
 	uint8_t *buf_idx = buf;
 	char modename[MODENAME_LEN];

@@ -65,7 +65,7 @@ typedef struct {
 #define error_msg		u.err.err_msg
 
 size_t header_len(tftp_header_t *hdr);
-void copy_to_buffer(tftp_header_t *hdr, uint8_t *buf);
+void copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr);
 void read_packet(const uint8_t *packet, int packet_len, tftp_header_t *hdr);
 
 #endif /* TFTP_H_ */
