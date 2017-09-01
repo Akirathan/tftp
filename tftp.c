@@ -139,8 +139,7 @@ read_packet(tftp_header_t *hdr, const uint8_t *packet, int packet_len)
 }
 
 /**
- * Convert hdr to byte buffer - should be compared with packet sent by orig
- * client. Suppose buf has correct length.
+ * Convert hdr to byte buffer. Suppose buf has correct length.
  */
 void
 copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
@@ -148,9 +147,8 @@ copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 	uint8_t *buf_idx = buf;
 	char modename[MODENAME_LEN];
 
-	uint16_t opcode = htons(hdr->opcode);
 	/* Save opcode and "shift" two bytes. */
-	*((uint16_t *)buf_idx) = opcode;
+	*((uint16_t *)buf_idx) = hdr->opcode;
 	buf_idx += 2;
 
 	switch (hdr->opcode) {
@@ -167,6 +165,10 @@ copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 		strcpy((char *)buf_idx, modename);
 		buf_idx += strlen(modename);
 		*buf_idx = '\0';
+		break;
+
+	case OPCODE_DATA:
+
 		break;
 	}
 }
