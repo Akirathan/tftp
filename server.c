@@ -19,11 +19,10 @@
 
 #define BUF_LEN	256
 
-char *host = "127.0.0.1";
 char *directory_path = "/home/mayfa/tftp_server";
 
-char filename[FILENAME_LEN];
-mode_t mode;
+int first_received = 1;
+tftp_mode_t mode;
 int client_sock;
 struct sockaddr client_addr;
 socklen_t client_addr_len = sizeof(client_addr);
@@ -51,15 +50,25 @@ resolve_service_by_privileges(char *service)
 }
 
 /**
+ * Generates random port.
+ */
+void
+random_service(char *service)
+{
+
+}
+
+/**
  * Converts header to buffer and sends it to the client.
  */
 void
-send(tftp_header_t *hdr)
+send_hdr(tftp_header_t *hdr)
 {
 	size_t buf_len = header_len(hdr);
 	uint8_t buf[buf_len];
 
 	copy_to_buffer(hdr, buf);
+
 	if (sendto(client_sock, buf, buf_len, 0, &client_addr, client_addr_len) == -1)
 		err(EXIT_FAILURE, "sendto");
 }
@@ -79,15 +88,14 @@ read_file(const char *filename)
 	if ((file = fopen(filename, "r")) == NULL)
 		err(EXIT_FAILURE, "fopen");
 
-	/* Send first DATA packet. */
-	hdr.data_blocknum = block_num;
 
 	while (n == DATA_LEN) {
 		if ((n = read(fileno(file), buf, DATA_LEN)) == -1)
 			err(EXIT_FAILURE, "read");
 
+		hdr.data_blocknum = block_num++;
 		hdr.data_data = buf;
-		send(&hdr);
+		send_hdr(&hdr);
 		/* Wait for ACK. */
 	}
 }
@@ -98,7 +106,7 @@ read_file(const char *filename)
 void
 generic_server()
 {
-	int error, sockfd, n;
+	int error, n;
 	uint8_t buff[BUF_LEN];
 	char service[PORT_LEN];
 	struct addrinfo *res, hints;
@@ -121,15 +129,34 @@ generic_server()
 	}
 
 	/* Create socket. */
-	if ((sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1)
+	if ((client_sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1)
 		err(EXIT_FAILURE, "socket");
 
 	/* Bind the first address returned by getaddrinfo. */
-	if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1)
+	if (bind(client_sock, res->ai_addr, res->ai_addrlen) == -1)
 		err(EXIT_FAILURE, "bind");
 
 	/* Receive socket from client. */
-	while ((n = recvfrom(sockfd, buff, BUF_LEN, 0, &client_addr, &client_addr_len)) != 0) {
+	while ((n = recvfrom(client_sock, buff, BUF_LEN, 0, &client_addr,
+			&client_addr_len)) != 0) {
+
+		/* Rebind client_sock to random port if necessary. */
+		if (first_received) {
+			close(client_sock);
+			random_service(service);
+			if ((error = getaddrinfo(NULL, service, &hints, &res)) != 0)
+				err(EXIT_FAILURE, "getaddrinfo: %s", gai_strerror(error));
+
+			if ((client_sock = socket(res->ai_family, res->ai_socktype,
+					res->ai_protocol)) == -1) {
+				err(EXIT_FAILURE, "socket");
+			}
+			if (bind(client_sock, res->ai_addr, res->ai_addrlen) == -1)
+				err(EXIT_FAILURE, "bind");
+
+			first_received = 0;
+		}
+
 		/* Check for an error. */
 		if (n == -1)
 			err(EXIT_FAILURE, "recvfrom");
@@ -137,37 +164,13 @@ generic_server()
 		read_packet(buff, n, &hdr);
 		switch (hdr.opcode) {
 		case RRQ_OPCODE:
+			mode = hdr.req_mode;
+			read_file(hdr.req_filename);
 			break;
 		}
 	}
 
 	freeaddrinfo(res);
-}
-
-void
-ipv4_server()
-{
-	int sock_fd, n;
-	uint8_t buf[BUF_LEN];
-	struct sockaddr_in sockaddr, client_addr;
-	socklen_t client_addr_size = sizeof (client_addr);
-	tftp_header_t hdr;
-
-	if ((sock_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
-		err(1, "socket initialization failed.");
-
-	sockaddr.sin_family = AF_INET;
-	sockaddr.sin_port = htons(NON_PRIVILEGED_PORT);
-	sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	if (bind(sock_fd, (struct sockaddr *) &sockaddr, sizeof (sockaddr)) == -1)
-		err(1, "bind");
-
-	n = recvfrom(sock_fd, buf, BUF_LEN, 0, (struct sockaddr *) &client_addr,
-			&client_addr_size);
-
-
-	read_packet(buf, n, &hdr);
 }
 
 int
