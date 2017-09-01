@@ -103,6 +103,7 @@ read_packet(tftp_header_t *hdr, const uint8_t *packet, int packet_len)
 		hdr->req_filename = filename;
 
 		packet_idx += strlen((char *)packet_idx);
+		packet_idx++; /* skip \0 */
 
 		/* Extract modename. */
 		strcpy(modename, ((char *)packet_idx));

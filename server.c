@@ -20,7 +20,7 @@
 
 #define BUF_LEN	256
 
-char *directory_path = "/home/mayfa/tftp_server";
+char *directory_path = "/home/mayfa/tftp_server/";
 
 int first_received = 1;
 tftp_mode_t mode;
@@ -67,7 +67,7 @@ resolve_service_by_privileges(char *service)
 void
 random_service(char *service)
 {
-
+	service = "4568";
 }
 
 /**
@@ -94,10 +94,17 @@ read_file(const char *filename)
 	uint16_t blocknum = 1;
 	tftp_header_t hdr;
 	FILE *file;
-	uint8_t buf[DATA_LEN], recv_buf[DATA_LEN], n = DATA_LEN;
+	uint8_t buf[DATA_LEN], recv_buf[DATA_LEN];
+	size_t filepath_len = strlen(directory_path) + strlen(filename);
+	ssize_t n = DATA_LEN;
 	int received;
+	char filepath[filepath_len];
 
-	if ((file = fopen(filename, "r")) == NULL)
+	/* Initiate and build filepath. */
+	bzero(filepath, filepath_len);
+	strcat(filepath, directory_path);
+	strcat(filepath, filename);
+	if ((file = fopen(filepath, "r")) == NULL)
 		err(EXIT_FAILURE, "fopen");
 
 
@@ -205,4 +212,5 @@ int
 main()
 {
 	generic_server();
+	//tests();
 }
