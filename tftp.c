@@ -16,7 +16,12 @@ static void to_lower_str(char *dest, const char *src);
 void
 tests()
 {
-	tftp_mode_t mode = mode_from_str("NETascii");
+	tftp_header_t hdr;
+	hdr.opcode = OPCODE_RRQ;
+	hdr.req_filename = "f.txt";
+	hdr.req_mode = MODE_NETASCII;
+
+	size_t size = header_len(&hdr);
 }
 
 /**
@@ -77,9 +82,22 @@ str_from_mode(char *str, const tftp_mode_t mode)
 size_t
 header_len(tftp_header_t *hdr)
 {
-	switch (hdr->opcode) {
+	char str[MODENAME_LEN];
+	/* Initiate size with opcode size. */
+	size_t size = 2;
 
+	switch (hdr->opcode) {
+	case OPCODE_RRQ:
+	case OPCODE_WRQ:
+		/* Count also terminating null for both strings. */
+		size += strlen(hdr->req_filename) + 1;
+		/* Calculate size of modename. */
+		str_from_mode(str, hdr->req_mode);
+		size += strlen(str) + 1;
+		break;
 	}
+
+	return size;
 }
 
 /**
