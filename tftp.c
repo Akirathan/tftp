@@ -11,11 +11,48 @@ char filename[FILENAME_LEN];
 
 static tftp_mode_t mode_from_str(const char *str);
 static void str_from_mode(char *str, const tftp_mode_t mode);
+static void to_lower_str(char *dest, const char *src);
+
+void
+tests()
+{
+	tftp_mode_t mode = mode_from_str("NETascii");
+}
+
+/**
+ * Converts whole string to lower case
+ */
+static void
+to_lower_str(char *dest, const char *src)
+{
+	const char *src_idx = src;
+	char *dest_idx = dest;
+
+	while (*src_idx != '\0') {
+		*dest_idx = (char) tolower((int) *src_idx);
+		dest_idx++;
+		src_idx++;
+	}
+
+	*dest_idx = '\0';
+}
 
 static tftp_mode_t
 mode_from_str(const char *str)
 {
+	char lower_str[strlen(str)];
 
+	to_lower_str(lower_str, str);
+
+	if (strcmp(lower_str, "netascii") == 0) {
+		return MODE_NETASCII;
+	}
+	else if (strcmp(lower_str, "octet") == 0) {
+		return MODE_OCTET;
+	}
+	else {
+		return MODE_UNKNOWN;
+	}
 }
 
 /**
@@ -25,10 +62,10 @@ static void
 str_from_mode(char *str, const tftp_mode_t mode)
 {
 	switch (mode) {
-	case NETASCII_MODE:
+	case MODE_NETASCII:
 		strcpy(str, "netascii");
 		break;
-	case OCTET_MODE:
+	case MODE_OCTET:
 		strcpy(str, "octet");
 		break;
 	}
@@ -49,25 +86,26 @@ header_len(tftp_header_t *hdr)
 void
 read_packet(tftp_header_t *hdr, const uint8_t *packet, int packet_len)
 {
-	int i = 2, file_idx = 0, mode_idx = 0;
+	const uint8_t *packet_idx = packet;
 	char modename[MODENAME_LEN];
 	uint16_t opcode;
 
 	/* First two bytes are opcode. */
 	opcode = ntohs(*((uint16_t *) packet));
 	hdr->opcode = opcode;
+	packet_idx += 2;
 
 	switch (hdr->opcode) {
 	case RRQ_OPCODE:
 	case WRQ_OPCODE:
 		/* Extract filename. */
-		strcpy(filename, packet[i]);
+		strcpy(filename, ((char *)packet_idx));
 		hdr->req_filename = filename;
 
-		i += strlen(packet[i]);
+		packet_idx += strlen((char *)packet_idx);
 
 		/* Extract modename. */
-		strcpy(modename, packet[i]);
+		strcpy(modename, ((char *)packet_idx));
 		hdr->req_mode = mode_from_str(modename);
 
 		break;
@@ -93,14 +131,14 @@ copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 	case RRQ_OPCODE:
 	case WRQ_OPCODE:
 		/* Filename. */
-		strcpy(buf_idx, hdr->req_filename);
+		strcpy((char *)buf_idx, hdr->req_filename);
 		buf_idx += strlen(hdr->req_filename);
 		*buf_idx = '\0';
 		buf_idx++;
 
 		/* Modename. */
 		str_from_mode(modename, hdr->req_mode);
-		strcpy(buf_idx, modename);
+		strcpy((char *)buf_idx, modename);
 		buf_idx += strlen(modename);
 		*buf_idx = '\0';
 		break;
