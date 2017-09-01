@@ -27,6 +27,17 @@ int client_sock;
 struct sockaddr client_addr;
 socklen_t client_addr_len = sizeof(client_addr);
 
+const char *const err_msgs[] = {
+		"Undefined",
+		"File not found",
+		"Access violation",
+		"Disk full or allocation exceeded",
+		"Illegal TFTP operation",
+		"Unknown transfer ID",
+		"File already exists",
+		"No such user"
+};
+
 void
 usage(char *program)
 {

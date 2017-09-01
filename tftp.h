@@ -9,23 +9,15 @@
 #define TFTP_H_
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <string.h>
 
 #define FILENAME_LEN		20
 #define MODENAME_LEN		8
 #define NON_PRIVILEGED_PORT	4567
 #define PORT_LEN			6
 #define DATA_LEN			512
-
-const char *const err_msgs[] = {
-		"Undefined",
-		"File not found",
-		"Access violation",
-		"Disk full or allocation exceeded",
-		"Illegal TFTP operation",
-		"Unknown transfer ID",
-		"File already exists",
-		"No such user"
-};
 
 typedef enum {
 	RRQ_OPCODE = 1,
@@ -38,14 +30,14 @@ typedef enum {
 typedef enum {
 	NETASCII_MODE,
 	OCTET_MODE
-} mode_t;
+} tftp_mode_t;
 
 typedef struct {
 	opcode_t opcode;
 	union {
 		struct {
 			char *filename;
-			mode_t mode;
+			tftp_mode_t mode;
 		} req_strings;
 
 		struct {
