@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <unistd.h>
 #include "tftp.h"
 
 #define BUF_LEN	256
@@ -78,36 +79,52 @@ send_hdr(tftp_header_t *hdr)
 	size_t buf_len = header_len(hdr);
 	uint8_t buf[buf_len];
 
-	copy_to_buffer(hdr, buf);
+	copy_to_buffer(buf, hdr);
 
 	if (sendto(client_sock, buf, buf_len, 0, &client_addr, client_addr_len) == -1)
 		err(EXIT_FAILURE, "sendto");
 }
 
 /**
- * Client sent RRQ, server should now send first data packet from random
- * port.
+ * Client sent RRQ, server should now send first data packet.
  */
 void
 read_file(const char *filename)
 {
-	uint16_t block_num = 1;
+	uint16_t blocknum = 1;
 	tftp_header_t hdr;
 	FILE *file;
-	uint8_t buf[DATA_LEN], n;
+	uint8_t buf[DATA_LEN], recv_buf[DATA_LEN], n = DATA_LEN;
+	int received;
 
 	if ((file = fopen(filename, "r")) == NULL)
 		err(EXIT_FAILURE, "fopen");
 
 
-	while (n == DATA_LEN) {
+	while (n > 0) {
 		if ((n = read(fileno(file), buf, DATA_LEN)) == -1)
 			err(EXIT_FAILURE, "read");
-
-		hdr.data_blocknum = block_num++;
+		/* Fill and send header. */
+		hdr.data_blocknum = blocknum;
 		hdr.data_data = buf;
 		send_hdr(&hdr);
 		/* Wait for ACK. */
+		// TODO Start clock
+		if ((received = recvfrom(client_sock, recv_buf, BUF_LEN, 0, &client_addr,
+				&client_addr_len)) == -1)
+			err(EXIT_FAILURE, "recvfrom");
+
+		read_packet(&hdr, recv_buf, received);
+		/* Check if received packet is of ACK type. */
+		if (hdr.opcode == ACK_OPCODE) {
+			if (hdr.ack_blocknum == blocknum) {
+				/* ACK received. */
+				blocknum++;
+			}
+		}
+		else {
+
+		}
 	}
 }
 
@@ -171,8 +188,8 @@ generic_server()
 		/* Check for an error. */
 		if (n == -1)
 			err(EXIT_FAILURE, "recvfrom");
-		/* Process received socket. */
-		read_packet(buff, n, &hdr);
+
+		read_packet(&hdr, buff, n);
 		switch (hdr.opcode) {
 		case RRQ_OPCODE:
 			mode = hdr.req_mode;
@@ -187,12 +204,5 @@ generic_server()
 int
 main()
 {
-	//generic_server();
-	tftp_header_t hdr;
-	hdr.opcode = RRQ_OPCODE;
-	hdr.req_filename = "hi";
-	hdr.req_mode = NETASCII_MODE;
-
-	//print_to_file(&hdr);
 	generic_server();
 }
