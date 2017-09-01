@@ -9,6 +9,26 @@
 
 char filename[FILENAME_LEN];
 
+static tftp_mode_t mode_from_str(const char *str);
+static void str_from_mode(char *str, const tftp_mode_t mode);
+
+/**
+ * Converts given mode to string.
+ */
+static void
+str_from_mode(char *str, const tftp_mode_t mode)
+{
+	switch (mode) {
+	case NETASCII_MODE:
+		strcpy(str, "netascii");
+		break;
+	case OCTET_MODE:
+		strcpy(str, "octet");
+		break;
+	}
+}
+
+
 /**
  * Fills in the tftp_header_t struct
  */
@@ -17,14 +37,11 @@ read_packet(const uint8_t *packet, int packet_len, tftp_header_t *hdr)
 {
 	int i = 2, file_idx = 0, mode_idx = 0;
 	char modename[MODENAME_LEN];
+	uint16_t opcode;
 
 	/* First two bytes are opcode. */
-	if (packet[0] != 0) {
-		hdr->opcode = ERR_OPCODE;
-	}
-	else {
-		hdr->opcode = packet[1];
-	}
+	opcode = ntohs(*((uint16_t *) packet));
+	hdr->opcode = opcode;
 
 	switch (hdr->opcode) {
 	case RRQ_OPCODE:
@@ -37,7 +54,7 @@ read_packet(const uint8_t *packet, int packet_len, tftp_header_t *hdr)
 
 		/* Extract modename. */
 		strcpy(modename, packet[i]);
-		hdr->req_mode = modename;
+		hdr->req_mode = mode_from_str(modename);
 
 		break;
 	}
@@ -51,6 +68,7 @@ void
 copy_to_buffer(tftp_header_t *hdr, uint8_t *buf)
 {
 	uint8_t *buf_idx = buf;
+	char modename[MODENAME_LEN];
 
 	uint16_t opcode = htons(hdr->opcode);
 	/* Save opcode and "shift" two bytes. */
@@ -64,9 +82,11 @@ copy_to_buffer(tftp_header_t *hdr, uint8_t *buf)
 		buf_idx += strlen(hdr->req_filename);
 		*buf_idx = '\0';
 		buf_idx++;
+
 		/* Modename. */
-		strcpy(buf_idx, hdr->req_mode);
-		buf_idx += strlen(hdr->req_mode);
+		str_from_mode(modename, hdr->req_mode);
+		strcpy(buf_idx, modename);
+		buf_idx += strlen(modename);
 		*buf_idx = '\0';
 		break;
 	}
