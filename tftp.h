@@ -66,6 +66,6 @@ typedef struct {
 
 size_t header_len(tftp_header_t *hdr);
 void copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr);
-void read_packet(const uint8_t *packet, int packet_len, tftp_header_t *hdr);
+void read_packet(tftp_header_t *hdr, const uint8_t *packet, int packet_len);
 
 #endif /* TFTP_H_ */

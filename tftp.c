@@ -47,7 +47,7 @@ header_len(tftp_header_t *hdr)
  * Fills in the tftp_header_t struct
  */
 void
-read_packet(const uint8_t *packet, int packet_len, tftp_header_t *hdr)
+read_packet(tftp_header_t *hdr, const uint8_t *packet, int packet_len)
 {
 	int i = 2, file_idx = 0, mode_idx = 0;
 	char modename[MODENAME_LEN];
@@ -91,6 +91,7 @@ copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 
 	switch (hdr->opcode) {
 	case RRQ_OPCODE:
+	case WRQ_OPCODE:
 		/* Filename. */
 		strcpy(buf_idx, hdr->req_filename);
 		buf_idx += strlen(hdr->req_filename);
