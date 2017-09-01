@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <ctype.h>
 
 #define FILENAME_LEN		20
 #define MODENAME_LEN		8
@@ -28,8 +29,9 @@ typedef enum {
 } opcode_t;
 
 typedef enum {
-	NETASCII_MODE,
-	OCTET_MODE
+	MODE_UNKNOWN,
+	MODE_NETASCII,
+	MODE_OCTET
 } tftp_mode_t;
 
 typedef struct {
