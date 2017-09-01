@@ -95,6 +95,11 @@ header_len(tftp_header_t *hdr)
 		str_from_mode(str, hdr->req_mode);
 		size += strlen(str) + 1;
 		break;
+
+	case OPCODE_DATA:
+		size += 2; /* Block number */
+		size += hdr->data_len;
+		break;
 	}
 
 	return size;

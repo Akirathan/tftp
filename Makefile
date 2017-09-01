@@ -7,7 +7,8 @@ OBJ_DIR = ./obj
 SERVER_BIN = server
 CLIENT_BIN = client
 
-OBJ = $(OBJ_DIR)/server.o
+OBJ += $(OBJ_DIR)/server.o
+OBJ += $(OBJ_DIR)/tftp.o
 CLIENT_OBJ = $(OBJ_DIR)/client.o
 
 

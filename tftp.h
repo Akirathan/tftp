@@ -45,6 +45,7 @@ typedef struct {
 		struct {
 			uint16_t block_num;
 			uint8_t *data;
+			size_t len;
 		} data;
 
 		struct {
@@ -62,6 +63,7 @@ typedef struct {
 #define req_mode		u.req_strings.mode
 #define data_blocknum	u.data.block_num
 #define data_data		u.data.data
+#define data_len		u.data.len
 #define ack_blocknum	u.ack.block_num
 #define error_code		u.err.err_code
 #define error_msg		u.err.err_msg

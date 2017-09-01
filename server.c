@@ -114,6 +114,7 @@ read_file(const char *filename)
 		/* Fill and send header. */
 		hdr.data_blocknum = blocknum;
 		hdr.data_data = buf;
+		hdr.data_len = n;
 		send_hdr(&hdr);
 		/* Wait for ACK. */
 		// TODO Start clock
@@ -123,7 +124,7 @@ read_file(const char *filename)
 
 		read_packet(&hdr, recv_buf, received);
 		/* Check if received packet is of ACK type. */
-		if (hdr.opcode == ACK_OPCODE) {
+		if (hdr.opcode == OPCODE_ACK) {
 			if (hdr.ack_blocknum == blocknum) {
 				/* ACK received. */
 				blocknum++;
@@ -198,7 +199,7 @@ generic_server()
 
 		read_packet(&hdr, buff, n);
 		switch (hdr.opcode) {
-		case RRQ_OPCODE:
+		case OPCODE_RRQ:
 			mode = hdr.req_mode;
 			read_file(hdr.req_filename);
 			break;
