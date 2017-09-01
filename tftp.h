@@ -21,11 +21,11 @@
 #define DATA_LEN			512
 
 typedef enum {
-	RRQ_OPCODE = 1,
-	WRQ_OPCODE = 2,
-	DATA_OPCODE = 3,
-	ACK_OPCODE = 4,
-	ERR_OPCODE = 5
+	OPCODE_RRQ = 1,
+	OPCODE_WRQ = 2,
+	OPCODE_DATA = 3,
+	OPCODE_ACK = 4,
+	OPCODE_ERR = 5
 } opcode_t;
 
 typedef enum {

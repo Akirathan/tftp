@@ -77,7 +77,9 @@ str_from_mode(char *str, const tftp_mode_t mode)
 size_t
 header_len(tftp_header_t *hdr)
 {
+	switch (hdr->opcode) {
 
+	}
 }
 
 /**
@@ -96,8 +98,8 @@ read_packet(tftp_header_t *hdr, const uint8_t *packet, int packet_len)
 	packet_idx += 2;
 
 	switch (hdr->opcode) {
-	case RRQ_OPCODE:
-	case WRQ_OPCODE:
+	case OPCODE_RRQ:
+	case OPCODE_WRQ:
 		/* Extract filename. */
 		strcpy(filename, ((char *)packet_idx));
 		hdr->req_filename = filename;
@@ -129,8 +131,8 @@ copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 	buf_idx += 2;
 
 	switch (hdr->opcode) {
-	case RRQ_OPCODE:
-	case WRQ_OPCODE:
+	case OPCODE_RRQ:
+	case OPCODE_WRQ:
 		/* Filename. */
 		strcpy((char *)buf_idx, hdr->req_filename);
 		buf_idx += strlen(hdr->req_filename);
