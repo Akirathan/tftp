@@ -145,10 +145,12 @@ void
 copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 {
 	uint8_t *buf_idx = buf;
+	uint16_t blocknum, opcode;
 	char modename[MODENAME_LEN];
 
-	/* Save opcode and "shift" two bytes. */
-	*((uint16_t *)buf_idx) = hdr->opcode;
+	/* Copy opcode and "shift" two bytes. */
+	opcode = htons(hdr->opcode);
+	*((uint16_t *)buf_idx) = opcode;
 	buf_idx += 2;
 
 	switch (hdr->opcode) {
@@ -168,6 +170,12 @@ copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 		break;
 
 	case OPCODE_DATA:
+		/* Copy block number and shift two bytes. */
+		blocknum = htons(hdr->data_blocknum);
+		*((uint16_t *)buf_idx) = blocknum;
+		buf_idx += 2;
+
+		memcpy(buf_idx, hdr->data_data, hdr->data_len);
 
 		break;
 	}

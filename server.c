@@ -112,6 +112,7 @@ read_file(const char *filename)
 		if ((n = read(fileno(file), buf, DATA_LEN)) == -1)
 			err(EXIT_FAILURE, "read");
 		/* Fill and send header. */
+		hdr.opcode = OPCODE_DATA;
 		hdr.data_blocknum = blocknum;
 		hdr.data_data = buf;
 		hdr.data_len = n;
