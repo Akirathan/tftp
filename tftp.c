@@ -9,6 +9,7 @@
 
 char filename[FILENAME_LEN];
 char errmsg[ERRMSG_LEN];
+uint8_t buf[DATA_LEN];
 
 static tftp_mode_t mode_from_str(const char *str);
 static void str_from_mode(char *str, const tftp_mode_t mode);
@@ -157,11 +158,13 @@ read_packet(tftp_header_t *hdr, uint8_t *packet, size_t packet_len)
 		hdr->data_blocknum = blocknum;
 		packet_idx += 2;
 
-		/* Point hdr data to packet data. */
-		hdr->data_data = packet_idx;
-
 		/* Data length. */
 		hdr->data_len = packet_len - 4;
+
+		/* Copy data from packet into local buffer */
+		memcpy(buf, packet_idx, hdr->data_len);
+		hdr->data_data = buf;
+
 		break;
 
 	case OPCODE_ACK:
