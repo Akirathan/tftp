@@ -217,14 +217,15 @@ generic_server()
 
 		/* Read packet and save mode */
 		read_packet(&hdr, buff, n);
-		mode = hdr.req_mode;
 
 		switch (hdr.opcode) {
 		case OPCODE_RRQ:
+			mode = hdr.req_mode;
 			read_file(hdr.req_filename);
 			break;
 
 		case OPCODE_WRQ:
+			mode = hdr.req_mode;
 			write_file(hdr.req_filename);
 			break;
 		}

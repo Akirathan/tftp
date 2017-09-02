@@ -107,7 +107,6 @@ header_len(tftp_header_t *hdr)
 		size += 2; /* block number */
 		size += hdr->data_len;
 		break;
-	}
 
 	case OPCODE_ACK:
 		size += 2; /* block number */
@@ -117,6 +116,7 @@ header_len(tftp_header_t *hdr)
 		size += 2; /* error code */
 		size += strlen(hdr->error_msg) + 1; /* error message */
 		break;
+	}
 
 	return size;
 }
