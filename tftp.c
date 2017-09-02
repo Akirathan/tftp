@@ -81,6 +81,8 @@ str_from_mode(char *str, const tftp_mode_t mode)
 	case MODE_OCTET:
 		strcpy(str, "octet");
 		break;
+	default:
+		break;
 	}
 }
 

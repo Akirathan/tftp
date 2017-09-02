@@ -98,7 +98,7 @@ receive_hdr(tftp_header_t *hdr)
 		err(EXIT_FAILURE, "recvfrom");
 
 	/* Convert packet to tftp_header_t */
-	read_packet(&hdr, buf, n);
+	read_packet(hdr, buf, n);
 }
 
 /**
@@ -108,7 +108,7 @@ receive_hdr(tftp_header_t *hdr)
 char *
 concat_paths(const char *dirpath, const char *fname, size_t *size)
 {
-	size = strlen(dirpath) + strlen(fname);
+	*size = strlen(dirpath) + strlen(fname);
 
 	/* Build the string */
 	bzero(filepath, FILEPATH_LEN);
@@ -128,6 +128,7 @@ write_file(const char *fname)
 	FILE *file;
 	char *fpath;
 	size_t fpath_len;
+	uint16_t blocknum = 1;
 
 	/* Check if files can be created */
 	// ...
@@ -142,7 +143,29 @@ write_file(const char *fname)
 	send_hdr(&hdr);
 
 	while (1) {
+		receive_hdr(&hdr);
+		if (hdr.opcode == OPCODE_DATA) {
+			/* Send ACK */
+			if (hdr.data_blocknum == blocknum) {
+				hdr.opcode = OPCODE_ACK;
+				hdr.ack_blocknum = blocknum;
+				send_hdr(&hdr);
+				blocknum++;
+			}
+			else {
+				/* TODO Received data with unexpected block number */
+			}
 
+			/* Write data to file */
+			// TODO netascii mode check
+			// ...
+			if (write(fileno(file), hdr.data_data, hdr.data_len) != hdr.data_len)
+				err(EXIT_FAILURE, "write");
+
+		}
+		else {
+			/* Error occured - terminate connection */
+		}
 	}
 }
 
@@ -155,17 +178,14 @@ read_file(const char *filename)
 	uint16_t blocknum = 1;
 	tftp_header_t hdr;
 	FILE *file;
-	uint8_t buf[DATA_LEN], recv_buf[DATA_LEN];
-	size_t filepath_len = strlen(dirpath) + strlen(filename);
+	uint8_t buf[DATA_LEN];
+	size_t fpath_len;
 	ssize_t n = DATA_LEN;
-	int received;
-	char filepath[filepath_len];
+	char *fpath;
 
 	/* Initiate and build filepath. */
-	bzero(filepath, filepath_len);
-	strcat(filepath, dirpath);
-	strcat(filepath, filename);
-	if ((file = fopen(filepath, "r")) == NULL)
+	fpath = concat_paths(dirpath, filename, &fpath_len);
+	if ((file = fopen(fpath, "r")) == NULL)
 		err(EXIT_FAILURE, "fopen");
 
 
@@ -180,11 +200,8 @@ read_file(const char *filename)
 		send_hdr(&hdr);
 		/* Wait for ACK. */
 		// TODO Start clock
-		if ((received = recvfrom(client_sock, recv_buf, BUF_LEN, 0, &client_addr,
-				&client_addr_len)) == -1)
-			err(EXIT_FAILURE, "recvfrom");
+		receive_hdr(&hdr);
 
-		read_packet(&hdr, recv_buf, received);
 		/* Check if received packet is of ACK type. */
 		if (hdr.opcode == OPCODE_ACK) {
 			if (hdr.ack_blocknum == blocknum) {
@@ -259,7 +276,7 @@ generic_server()
 		if (n == -1)
 			err(EXIT_FAILURE, "recvfrom");
 
-		/* Read packet and save mode */
+		/* Read packet */
 		read_packet(&hdr, buff, n);
 
 		switch (hdr.opcode) {
@@ -271,6 +288,10 @@ generic_server()
 		case OPCODE_WRQ:
 			mode = hdr.req_mode;
 			write_file(hdr.req_filename);
+			break;
+
+		default:
+			/* Client should not initiate communication with other opcodes */
 			break;
 		}
 	}
