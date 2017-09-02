@@ -20,7 +20,8 @@
 
 #define BUF_LEN	256
 
-char *directory_path = "/home/mayfa/tftp_server/";
+char *dirpath = "/home/mayfa/tftp_server/";
+char filepath[FILEPATH_LEN];
 
 int first_received = 1;
 tftp_mode_t mode;
@@ -85,21 +86,64 @@ send_hdr(tftp_header_t *hdr)
 		err(EXIT_FAILURE, "sendto");
 }
 
+void
+receive_hdr(tftp_header_t *hdr)
+{
+	int n = 0;
+	uint8_t buf[BUF_LEN];
+
+	/* Receive packet */
+	if ((n= recvfrom(client_sock, buf, BUF_LEN, 0, &client_addr,
+			&client_addr_len)) == -1)
+		err(EXIT_FAILURE, "recvfrom");
+
+	/* Convert packet to tftp_header_t */
+	read_packet(&hdr, buf, n);
+}
+
 /**
- * Client writes to fname.
+ * Concatenates directory path with filename. The size of result is assigned
+ * to size parameter.
+ */
+char *
+concat_paths(const char *dirpath, const char *fname, size_t *size)
+{
+	size = strlen(dirpath) + strlen(fname);
+
+	/* Build the string */
+	bzero(filepath, FILEPATH_LEN);
+	strcat(filepath, dirpath);
+	strcat(filepath, fname);
+
+	return filepath;
+}
+
+/**
+ * Client writes to file.
  */
 void
 write_file(const char *fname)
 {
 	tftp_header_t hdr;
+	FILE *file;
+	char *fpath;
+	size_t fpath_len;
 
 	/* Check if files can be created */
 	// ...
+
+	fpath = concat_paths(dirpath, fname, &fpath_len);
+	if ((file = fopen(fpath, "w+")) == NULL)
+		err(EXIT_FAILURE, "fopen");
 
 	/* Send ACK */
 	hdr.opcode = OPCODE_ACK;
 	hdr.ack_blocknum = 0;
 	send_hdr(&hdr);
+
+	while (1) {
+
+	}
 }
 
 /**
@@ -112,14 +156,14 @@ read_file(const char *filename)
 	tftp_header_t hdr;
 	FILE *file;
 	uint8_t buf[DATA_LEN], recv_buf[DATA_LEN];
-	size_t filepath_len = strlen(directory_path) + strlen(filename);
+	size_t filepath_len = strlen(dirpath) + strlen(filename);
 	ssize_t n = DATA_LEN;
 	int received;
 	char filepath[filepath_len];
 
 	/* Initiate and build filepath. */
 	bzero(filepath, filepath_len);
-	strcat(filepath, directory_path);
+	strcat(filepath, dirpath);
 	strcat(filepath, filename);
 	if ((file = fopen(filepath, "r")) == NULL)
 		err(EXIT_FAILURE, "fopen");
