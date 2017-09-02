@@ -86,6 +86,23 @@ send_hdr(tftp_header_t *hdr)
 }
 
 /**
+ * Client writes to fname.
+ */
+void
+write_file(const char *fname)
+{
+	tftp_header_t hdr;
+
+	/* Check if files can be created */
+	// ...
+
+	/* Send ACK */
+	hdr.opcode = OPCODE_ACK;
+	hdr.ack_blocknum = 0;
+	send_hdr(&hdr);
+}
+
+/**
  * Client sent RRQ, server should now send first data packet.
  */
 void
@@ -198,11 +215,17 @@ generic_server()
 		if (n == -1)
 			err(EXIT_FAILURE, "recvfrom");
 
+		/* Read packet and save mode */
 		read_packet(&hdr, buff, n);
+		mode = hdr.req_mode;
+
 		switch (hdr.opcode) {
 		case OPCODE_RRQ:
-			mode = hdr.req_mode;
 			read_file(hdr.req_filename);
+			break;
+
+		case OPCODE_WRQ:
+			write_file(hdr.req_filename);
 			break;
 		}
 	}

@@ -8,6 +8,7 @@
 #include "tftp.h"
 
 char filename[FILENAME_LEN];
+char errmsg[ERRMSG_LEN];
 
 static tftp_mode_t mode_from_str(const char *str);
 static void str_from_mode(char *str, const tftp_mode_t mode);
@@ -109,11 +110,11 @@ header_len(tftp_header_t *hdr)
  * Fills in the tftp_header_t struct
  */
 void
-read_packet(tftp_header_t *hdr, const uint8_t *packet, int packet_len)
+read_packet(tftp_header_t *hdr, uint8_t *packet, size_t packet_len)
 {
 	const uint8_t *packet_idx = packet;
 	char modename[MODENAME_LEN];
-	uint16_t opcode;
+	uint16_t opcode, blocknum, errcode;
 
 	/* First two bytes are opcode. */
 	opcode = ntohs(*((uint16_t *) packet));
@@ -131,10 +132,38 @@ read_packet(tftp_header_t *hdr, const uint8_t *packet, int packet_len)
 		packet_idx++; /* skip \0 */
 
 		/* Extract modename. */
-		strcpy(modename, ((char *)packet_idx));
+		strcpy(modename, (char *) packet_idx);
 		hdr->req_mode = mode_from_str(modename);
-
 		break;
+
+	case OPCODE_DATA:
+		/* Block number. */
+		blocknum = ntohs(*((uint16_t *) packet_idx));
+		hdr->data_blocknum = blocknum;
+		packet_idx += 2;
+
+		/* Point hdr data to packet data. */
+		hdr->data_data = packet_idx;
+
+		/* Data length. */
+		hdr->data_len = packet_len - 4;
+		break;
+
+	case OPCODE_ACK:
+		/* Block number. */
+		blocknum = ntohs(*((uint16_t *) packet_idx));
+		hdr->ack_blocknum = blocknum;
+		break;
+
+	case OPCODE_ERR:
+		/* Error code */
+		errcode = ntohs(*((uint16_t *) packet_idx));
+		hdr->error_code = errcode;
+		packet_idx += 2;
+
+		/* Error message */
+		strncpy(errmsg, (char *) packet_idx, ERRMSG_LEN);
+		hdr->error_msg = errmsg;
 	}
 }
 
@@ -145,10 +174,10 @@ void
 copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 {
 	uint8_t *buf_idx = buf;
-	uint16_t blocknum, opcode;
+	uint16_t blocknum, opcode, errcode;
 	char modename[MODENAME_LEN];
 
-	/* Copy opcode and "shift" two bytes. */
+	/* Copy opcode and "shift" two bytes */
 	opcode = htons(hdr->opcode);
 	*((uint16_t *)buf_idx) = opcode;
 	buf_idx += 2;
@@ -156,13 +185,13 @@ copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 	switch (hdr->opcode) {
 	case OPCODE_RRQ:
 	case OPCODE_WRQ:
-		/* Filename. */
+		/* Filename */
 		strcpy((char *)buf_idx, hdr->req_filename);
 		buf_idx += strlen(hdr->req_filename);
 		*buf_idx = '\0';
 		buf_idx++;
 
-		/* Modename. */
+		/* Modename */
 		str_from_mode(modename, hdr->req_mode);
 		strcpy((char *)buf_idx, modename);
 		buf_idx += strlen(modename);
@@ -170,13 +199,29 @@ copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 		break;
 
 	case OPCODE_DATA:
-		/* Copy block number and shift two bytes. */
+		/* Copy block number and shift two bytes */
 		blocknum = htons(hdr->data_blocknum);
 		*((uint16_t *)buf_idx) = blocknum;
 		buf_idx += 2;
 
 		memcpy(buf_idx, hdr->data_data, hdr->data_len);
 
+		break;
+
+	case OPCODE_ACK:
+		/* Copy only block number */
+		blocknum = htons(hdr->ack_blocknum);
+		*((uint16_t *)buf_idx) = blocknum;
+		break;
+
+	case OPCODE_ERR:
+		/* Error code */
+		errcode = htons(hdr->error_code);
+		*((uint16_t *)buf_idx) = errcode;
+		buf_idx += 2;
+
+		/* Error message */
+		strncpy((char *) buf_idx, hdr->error_msg, ERRMSG_LEN);
 		break;
 	}
 }

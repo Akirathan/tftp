@@ -13,9 +13,11 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <ctype.h>
+#include <stddef.h>
 
 #define FILENAME_LEN		20
 #define MODENAME_LEN		8
+#define ERRMSG_LEN			30
 #define NON_PRIVILEGED_PORT	4567
 #define PORT_LEN			6
 #define DATA_LEN			512
@@ -70,7 +72,7 @@ typedef struct {
 
 size_t header_len(tftp_header_t *hdr);
 void copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr);
-void read_packet(tftp_header_t *hdr, const uint8_t *packet, int packet_len);
+void read_packet(tftp_header_t *hdr, uint8_t *packet, size_t packet_len);
 
 void tests();
 
