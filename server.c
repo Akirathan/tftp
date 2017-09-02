@@ -190,8 +190,16 @@ read_file(const char *filename)
 
 
 	while (n > 0) {
-		if ((n = read(fileno(file), buf, DATA_LEN)) == -1)
+		n = read(fileno(file), buf, DATA_LEN);
+
+		if (n == -1) {
 			err(EXIT_FAILURE, "read");
+		}
+		else if (n == 0) {
+			/* Dont send anything */
+			break;
+		}
+
 		/* Fill and send header. */
 		hdr.opcode = OPCODE_DATA;
 		hdr.data_blocknum = blocknum;
