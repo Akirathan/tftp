@@ -18,11 +18,17 @@ void
 tests()
 {
 	tftp_header_t hdr;
-	hdr.opcode = OPCODE_RRQ;
-	hdr.req_filename = "f.txt";
-	hdr.req_mode = MODE_NETASCII;
+	uint8_t buf[10];
 
-	size_t size = header_len(&hdr);
+	hdr.opcode = OPCODE_ACK;
+	hdr.ack_blocknum = 3;
+	copy_to_buffer(buf, &hdr);
+
+	hdr.opcode = OPCODE_ERR;
+	hdr.error_code = 7;
+	hdr.error_msg = "hi";
+	copy_to_buffer(buf, &hdr);
+
 }
 
 /**
@@ -98,10 +104,19 @@ header_len(tftp_header_t *hdr)
 		break;
 
 	case OPCODE_DATA:
-		size += 2; /* Block number */
+		size += 2; /* block number */
 		size += hdr->data_len;
 		break;
 	}
+
+	case OPCODE_ACK:
+		size += 2; /* block number */
+		break;
+
+	case OPCODE_ERR:
+		size += 2; /* error code */
+		size += strlen(hdr->error_msg) + 1; /* error message */
+		break;
 
 	return size;
 }
@@ -112,7 +127,7 @@ header_len(tftp_header_t *hdr)
 void
 read_packet(tftp_header_t *hdr, uint8_t *packet, size_t packet_len)
 {
-	const uint8_t *packet_idx = packet;
+	uint8_t *packet_idx = packet;
 	char modename[MODENAME_LEN];
 	uint16_t opcode, blocknum, errcode;
 
