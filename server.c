@@ -17,6 +17,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include "tftp.h"
+#include "file_op.h"
 
 #define BUF_LEN	256
 
@@ -163,10 +164,7 @@ write_file(const char *fname)
 			}
 
 			/* Write data to file */
-			// TODO netascii mode check
-			// ...
-			if (write(fileno(file), hdr.data_data, hdr.data_len) != hdr.data_len)
-				err(EXIT_FAILURE, "write");
+			write_file_convert(file, mode, (char *) hdr.data_data, hdr.data_len);
 
 			if (last_packet)
 				break;
@@ -177,7 +175,7 @@ write_file(const char *fname)
 		}
 	}
 
-	close(fileno(file));
+	fflush(file);
 }
 
 /**
@@ -190,8 +188,7 @@ read_file(const char *filename)
 	tftp_header_t hdr;
 	FILE *file;
 	uint8_t buf[DATA_LEN];
-	size_t fpath_len;
-	ssize_t n;
+	size_t fpath_len, bufsize;
 	char *fpath;
 
 	/* Initiate and build filepath. */
@@ -201,12 +198,9 @@ read_file(const char *filename)
 
 
 	do {
-		n = read(fileno(file), buf, DATA_LEN);
+		read_file_convert(file, mode, (char *) buf, &bufsize, DATA_LEN);
 
-		if (n == -1) {
-			err(EXIT_FAILURE, "read");
-		}
-		else if (n == 0) {
+		if (bufsize == 0) {
 			/* Dont send anything */
 			break;
 		}
@@ -215,7 +209,7 @@ read_file(const char *filename)
 		hdr.opcode = OPCODE_DATA;
 		hdr.data_blocknum = blocknum;
 		hdr.data_data = buf;
-		hdr.data_len = n;
+		hdr.data_len = bufsize;
 		send_hdr(&hdr);
 		/* Wait for ACK. */
 		// TODO Start clock
@@ -231,7 +225,7 @@ read_file(const char *filename)
 		else {
 
 		}
-	} while (n == DATA_LEN);
+	} while (bufsize == DATA_LEN);
 }
 
 /**
@@ -322,5 +316,4 @@ int
 main()
 {
 	generic_server();
-	//tests();
 }

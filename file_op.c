@@ -15,18 +15,19 @@ static int from_prev = 0;
 /**
  * Fills the buffer with data read (and converted if necessary) from file.
  */
-size_t
-read_file_convert(FILE *f, tftp_mode_t mode, char *buf, size_t bufsize)
+void
+read_file_convert(FILE *f, tftp_mode_t mode, char *buf, size_t *bufsize,
+		size_t maxbufsize)
 {
-	char lbuf[bufsize];
+	char lbuf[maxbufsize];
 	size_t buf_idx = 0, n;
 
 	if (mode == MODE_OCTET) {
-		if ((n = read(fileno(f), buf, bufsize)) == -1)
+		if ((n = read(fileno(f), buf, maxbufsize)) == -1)
 			err(EXIT_FAILURE, "read");
 	}
 	else if (mode == MODE_NETASCII) {
-		if ((n = read(fileno(f), lbuf, bufsize)) == -1)
+		if ((n = read(fileno(f), lbuf, maxbufsize)) == -1)
 			err(EXIT_FAILURE, "read");
 
 		/* Check if there is a pending char from previous reading */
@@ -36,11 +37,11 @@ read_file_convert(FILE *f, tftp_mode_t mode, char *buf, size_t bufsize)
 		}
 
 		/* Read lbuf and fill buf */
-		for (int i = 0; i < bufsize; ++i) {
+		for (int i = 0; i < n; ++i) {
 			/* Convert \r --> \r \0 */
 			if (lbuf[i] == '\r') {
 				/* Check if this is last char that fits into buf */
-				if (buf_idx == bufsize - 1) {
+				if (buf_idx == maxbufsize - 1) {
 					from_prev = 1;
 					buf[buf_idx] = '\r';
 					prev_char = '\0';
@@ -53,7 +54,7 @@ read_file_convert(FILE *f, tftp_mode_t mode, char *buf, size_t bufsize)
 			/* Convert \n --> \r \n */
 			else if (lbuf[i] == '\n') {
 				/* Check if this is last char that fits into buf */
-				if (buf_idx == bufsize - 1) {
+				if (buf_idx == maxbufsize - 1) {
 					from_prev = 1;
 					buf[buf_idx] = '\r';
 					prev_char = '\n';
@@ -69,14 +70,15 @@ read_file_convert(FILE *f, tftp_mode_t mode, char *buf, size_t bufsize)
 			}
 		}
 	}
-	return n;
+	/* Return number of bytes filled into buffer */
+	*bufsize = buf_idx;
 }
 
 
 static void
 write_char(const char c, FILE *file)
 {
-	if (putc((int) c, file) < 0)
+	if (fputc((int) c, file) == EOF)
 		err(EXIT_FAILURE, "putc");
 }
 
