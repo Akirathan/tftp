@@ -22,6 +22,7 @@
 #define NON_PRIVILEGED_PORT	4567
 #define PORT_LEN			6
 #define DATA_LEN			512
+#define PACKET_LEN			DATA_LEN + 4
 
 typedef enum {
 	OPCODE_RRQ = 1,

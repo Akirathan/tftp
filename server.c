@@ -89,10 +89,10 @@ void
 receive_hdr(tftp_header_t *hdr)
 {
 	int n = 0;
-	uint8_t buf[DATA_LEN];
+	uint8_t buf[PACKET_LEN];
 
 	/* Receive packet */
-	if ((n= recvfrom(client_sock, buf, DATA_LEN, 0, &client_addr,
+	if ((n = recvfrom(client_sock, buf, PACKET_LEN, 0, &client_addr,
 			&client_addr_len)) == -1)
 		err(EXIT_FAILURE, "recvfrom");
 
