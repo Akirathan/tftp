@@ -129,12 +129,13 @@ write_file(const char *fname)
 	char *fpath;
 	size_t fpath_len;
 	uint16_t blocknum = 1;
+	int last_packet = 0;
 
 	/* Check if files can be created */
 	// ...
 
 	fpath = concat_paths(dirpath, fname, &fpath_len);
-	if ((file = fopen(fpath, "w+")) == NULL)
+	if ((file = fopen(fpath, "w")) == NULL)
 		err(EXIT_FAILURE, "fopen");
 
 	/* Send ACK */
@@ -142,9 +143,14 @@ write_file(const char *fname)
 	hdr.ack_blocknum = 0;
 	send_hdr(&hdr);
 
-	while (1) {
+	for (;;) {
 		receive_hdr(&hdr);
 		if (hdr.opcode == OPCODE_DATA) {
+			/* Check if last data packet was received */
+			if (hdr.data_len < DATA_LEN) {
+				last_packet = 1;
+			}
+
 			/* Send ACK */
 			if (hdr.data_blocknum == blocknum) {
 				hdr.opcode = OPCODE_ACK;
@@ -162,11 +168,16 @@ write_file(const char *fname)
 			if (write(fileno(file), hdr.data_data, hdr.data_len) != hdr.data_len)
 				err(EXIT_FAILURE, "write");
 
+			if (last_packet)
+				break;
 		}
 		else {
 			/* Error occured - terminate connection */
+			break;
 		}
 	}
+
+	close(fileno(file));
 }
 
 /**
@@ -180,7 +191,7 @@ read_file(const char *filename)
 	FILE *file;
 	uint8_t buf[DATA_LEN];
 	size_t fpath_len;
-	ssize_t n = DATA_LEN;
+	ssize_t n;
 	char *fpath;
 
 	/* Initiate and build filepath. */
@@ -189,7 +200,7 @@ read_file(const char *filename)
 		err(EXIT_FAILURE, "fopen");
 
 
-	while (n > 0) {
+	do {
 		n = read(fileno(file), buf, DATA_LEN);
 
 		if (n == -1) {
@@ -220,7 +231,7 @@ read_file(const char *filename)
 		else {
 
 		}
-	}
+	} while (n == DATA_LEN);
 }
 
 /**
