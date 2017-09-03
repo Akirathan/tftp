@@ -19,8 +19,6 @@
 #include "tftp.h"
 #include "file_op.h"
 
-#define BUF_LEN	256
-
 char *dirpath = "/home/mayfa/tftp_server/";
 char filepath[FILEPATH_LEN];
 
@@ -91,10 +89,10 @@ void
 receive_hdr(tftp_header_t *hdr)
 {
 	int n = 0;
-	uint8_t buf[BUF_LEN];
+	uint8_t buf[DATA_LEN];
 
 	/* Receive packet */
-	if ((n= recvfrom(client_sock, buf, BUF_LEN, 0, &client_addr,
+	if ((n= recvfrom(client_sock, buf, DATA_LEN, 0, &client_addr,
 			&client_addr_len)) == -1)
 		err(EXIT_FAILURE, "recvfrom");
 
@@ -235,7 +233,7 @@ void
 generic_server()
 {
 	int error, n;
-	uint8_t buff[BUF_LEN];
+	uint8_t buff[DATA_LEN];
 	char service[PORT_LEN];
 	struct addrinfo *res, hints;
 	struct protoent *udp_protocol;
@@ -265,7 +263,7 @@ generic_server()
 		err(EXIT_FAILURE, "bind");
 
 	/* Receive socket from client. */
-	while ((n = recvfrom(client_sock, buff, BUF_LEN, 0, &client_addr,
+	while ((n = recvfrom(client_sock, buff, DATA_LEN, 0, &client_addr,
 			&client_addr_len)) != 0) {
 
 		/* Rebind client_sock to random port if necessary. */
