@@ -16,34 +16,38 @@ static int from_prev = 0;
  * Fills the buffer with data read (and converted if necessary) from file.
  */
 void
-read_file_convert(FILE *f, tftp_mode_t mode, char *buf, size_t *bufsize,
+read_file_convert(FILE *file, tftp_mode_t mode, char *buf, size_t *bufsize,
 		size_t maxbufsize)
 {
-	char lbuf[maxbufsize];
 	size_t buf_idx = 0, n;
+	int currchar;
 
 	if (mode == MODE_OCTET) {
-		if ((n = read(fileno(f), buf, maxbufsize)) == -1)
+		if ((n = read(fileno(file), buf, maxbufsize)) == -1)
 			err(EXIT_FAILURE, "read");
+		*bufsize = n;
 	}
 	else if (mode == MODE_NETASCII) {
-		if ((n = read(fileno(f), lbuf, maxbufsize)) == -1)
-			err(EXIT_FAILURE, "read");
-
-		/* Check if there is a pending char from previous reading */
+		/* Check if there is a pending char from previous reading. */
 		if (from_prev) {
-			buf[buf_idx++] = from_prev;
+			buf[buf_idx++] = prev_char;
 			from_prev = 0;
 		}
 
-		/* Read lbuf and fill buf */
-		for (int i = 0; i < n; ++i) {
+		/* While buffer is not full. */
+		while (buf_idx != maxbufsize) {
+			/* Get char from file. */
+			if ((currchar = getc(file)) == EOF) {
+				/* Error or EOF. */
+				break;
+			}
+
 			/* Convert \r --> \r \0 */
-			if (lbuf[i] == '\r') {
-				/* Check if this is last char that fits into buf */
+			if (currchar == '\r') {
+				/* Check if this is last char that fits into buf. */
 				if (buf_idx == maxbufsize - 1) {
 					from_prev = 1;
-					buf[buf_idx] = '\r';
+					buf[buf_idx++] = '\r';
 					prev_char = '\0';
 				}
 				else {
@@ -52,11 +56,11 @@ read_file_convert(FILE *f, tftp_mode_t mode, char *buf, size_t *bufsize,
 				}
 			}
 			/* Convert \n --> \r \n */
-			else if (lbuf[i] == '\n') {
+			else if (currchar == '\n') {
 				/* Check if this is last char that fits into buf */
 				if (buf_idx == maxbufsize - 1) {
 					from_prev = 1;
-					buf[buf_idx] = '\r';
+					buf[buf_idx++] = '\r';
 					prev_char = '\n';
 				}
 				else {
@@ -66,12 +70,12 @@ read_file_convert(FILE *f, tftp_mode_t mode, char *buf, size_t *bufsize,
 			}
 			/* Copy */
 			else {
-				buf[buf_idx++] = lbuf[i];
+				buf[buf_idx++] = currchar;
 			}
 		}
-	}
-	/* Return number of bytes filled into buffer */
+	/* Return number of bytes filled into buffer. */
 	*bufsize = buf_idx;
+	} /* MODE_NETASCII */
 }
 
 
@@ -83,10 +87,37 @@ write_char(const char c, FILE *file)
 }
 
 /**
+ * Conversion:
+ *   \r \0 --> \r
+ *   \r \n --> \n
+ *   \n \r --> \n
+ */
+static int
+convert(const char c1, const char c2, char *c)
+{
+	if (c1 == '\r' && c2 == '\0') {
+		*c = '\r';
+		return 1;
+	}
+	else if (c1 == '\r' && c2 == '\n') {
+		*c = '\n';
+		return 1;
+	}
+	else if (c1 == '\n' && c2 == '\r') {
+		*c = '\n';
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
+/**
  * Writes given buffer into a file and converts data if necessary.
  * Conversion:
  *   \r \0 --> \r
  * 	 \r \n --> \n
+ * 	 \n \r --> \n
  */
 void
 write_file_convert(FILE *file, tftp_mode_t mode, const char *packet,
@@ -97,36 +128,52 @@ write_file_convert(FILE *file, tftp_mode_t mode, const char *packet,
 			err(EXIT_FAILURE, "write");
 	}
 	else if (mode == MODE_NETASCII) {
-		/* Check if last char of previous buffer was \r */
+		/* Check if last char of previous buffer was \r or \n */
 		if (from_prev) {
-			if (packet[0] == '\0') {
+			if (prev_char == '\r' && packet[0] == '\0') {
 				write_char('\r', file);
 			}
-			else if (packet[0] == '\n') {
+			else if (prev_char == '\r' && packet[0] == '\n') {
 				write_char('\n', file);
 			}
-			from_prev = 0;
-		}
-
-		for (size_t i = 0; i < packetlen; ++i) {
-			if (packet[i] == '\r') {
-				if (i == packetlen - 1) {
-					/* End of packet */
-					from_prev = 1;
-				}
-				else {
-					/* Check next char from packet */
-					if (packet[i+1] == '\0') {
-						write_char('\r', file);
-					}
-					else if (packet[i+1] == '\n') {
-						write_char('\n', file);
-					}
-					/* Skip next char */
-					i++;
-				}
+			else if (prev_char == '\n' && packet[0] == '\r') {
+				write_char('\n', file);
 			}
 			else {
+				/* \r \r OR \n \n */
+				write_char(prev_char, file);
+				write_char(packet[0], file);
+			}
+		}
+
+		/* Read whole packet and convert. */
+		for (size_t i = 0; i < packetlen; ++i) {
+			char writechar;
+
+			/* Skip first char. */
+			if (from_prev) {
+				from_prev = 0;
+				continue;
+			}
+
+			/* End of packet. */
+			if (i == packetlen-1 && (packet[i] == '\r' || packet[i] == '\n')) {
+				/* Store for next function invocation. */
+				from_prev = 1;
+				prev_char = packet[i];
+			}
+			else if (i == packetlen-1) {
+				write_char(packet[i], file);
+			}
+			/**/
+			else if (convert(packet[i], packet[i+1], &writechar)) {
+				/* Convert. */
+				write_char(writechar, file);
+				/* Skip next char */
+				i++;
+			}
+			else {
+				/* Copy. */
 				write_char(packet[i], file);
 			}
 		}
