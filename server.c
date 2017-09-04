@@ -16,6 +16,8 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <setjmp.h>
+#include <signal.h>
 #include "tftp.h"
 #include "file_op.h"
 
@@ -27,6 +29,8 @@ tftp_mode_t mode;
 int client_sock;
 struct sockaddr client_addr;
 socklen_t client_addr_len = sizeof(client_addr);
+jmp_buf timeoutbuf;
+unsigned int timeout = 3;
 
 const char *const err_msgs[] = {
 		"Undefined",
@@ -140,10 +144,14 @@ write_file(const char *fname)
 	/* Send ACK */
 	hdr.opcode = OPCODE_ACK;
 	hdr.ack_blocknum = 0;
+	setjmp(timeoutbuf);
 	send_hdr(&hdr);
 
 	for (;;) {
+		alarm(timeout);
 		receive_hdr(&hdr);
+		alarm(0);
+
 		if (hdr.opcode == OPCODE_DATA) {
 			/* Check if last data packet was received */
 			if (hdr.data_len < DATA_LEN) {
@@ -203,10 +211,12 @@ read_file(const char *filename)
 		hdr.data_blocknum = blocknum;
 		hdr.data_data = buf;
 		hdr.data_len = bufsize;
+		setjmp(timeoutbuf);
 		send_hdr(&hdr);
 		/* Wait for ACK. */
-		// TODO Start clock
+		alarm(timeout);
 		receive_hdr(&hdr);
+		alarm(0);
 
 		/* Check if received packet is of ACK type. */
 		if (hdr.opcode == OPCODE_ACK) {
@@ -219,6 +229,12 @@ read_file(const char *filename)
 
 		}
 	} while (bufsize == DATA_LEN);
+}
+
+void
+timeout_handler(int signum)
+{
+	longjmp(timeoutbuf, 1);
 }
 
 /**
@@ -308,5 +324,13 @@ generic_server()
 int
 main()
 {
+	struct sigaction action;
+
+	action.sa_handler = timeout_handler;
+	sigemptyset(&action.sa_mask);
+	action.sa_flags = 0;
+
+	if (sigaction(SIGALRM, &action, NULL) < 0)
+		err(EXIT_FAILURE, "sigaction");
 	generic_server();
 }
