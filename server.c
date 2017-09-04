@@ -198,11 +198,6 @@ read_file(const char *filename)
 	do {
 		read_file_convert(file, mode, (char *) buf, &bufsize, DATA_LEN);
 
-		if (bufsize == 0) {
-			/* Dont send anything */
-			break;
-		}
-
 		/* Fill and send header. */
 		hdr.opcode = OPCODE_DATA;
 		hdr.data_blocknum = blocknum;
