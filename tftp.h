@@ -3,6 +3,10 @@
  *
  *  Created on: Aug 10, 2017
  *      Author: mayfa
+ *
+ * This file contains opcode, mode and header struct definitions necessary
+ * for TFTP communication. copy_to_buffer and read_packet are functions to
+ * serialize and deserialize the byte buffers to be sent over the network.
  */
 
 #ifndef TFTP_H_

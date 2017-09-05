@@ -14,6 +14,12 @@ static int from_prev = 0;
 
 /**
  * Fills the buffer with data read (and converted if necessary) from file.
+ * Assign total buffer size to bufsize.
+ *
+ * Reads one char from file at a time and if mode is MODE_NETASCII,
+ * the following conversion is done:
+ * 	\r --> \r \0
+ * 	\n --> \r \n
  */
 void
 read_file_convert(FILE *file, tftp_mode_t mode, char *buf, size_t *bufsize,

@@ -125,7 +125,7 @@ header_len(tftp_header_t *hdr)
 }
 
 /**
- * Fills in the tftp_header_t struct
+ * "Deserialize" packet buffer into header.
  */
 void
 read_packet(tftp_header_t *hdr, uint8_t *packet, size_t packet_len)
@@ -188,7 +188,8 @@ read_packet(tftp_header_t *hdr, uint8_t *packet, size_t packet_len)
 }
 
 /**
- * Convert hdr to byte buffer. Suppose buf has correct length.
+ * "Serialize" header into buffer ie. copy header into buffer in network byte
+ * order. Suppose buf is large enough.
  */
 void
 copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
