@@ -21,9 +21,8 @@
 #include "tftp.h"
 #include "file_op.h"
 
-char *dirpath = "/home/mayfa/tftp_server/";
+char *dirpath;
 char filepath[FILEPATH_LEN];
-
 int first_received = 1;
 tftp_mode_t mode;
 int client_sock;
@@ -57,12 +56,18 @@ usage(char *program)
 void
 resolve_service_by_privileges(char *service)
 {
-	/* Investigate privileges. */
-	// ...
+	struct servent *ent;
 
-	/* Return port number. */
-	// ...
-	snprintf(service, PORT_LEN, "%d", NON_PRIVILEGED_PORT);
+	if ((ent = getservbyname("tftp", "udp")) == NULL)
+		err(EXIT_FAILURE, "getservbyname");
+
+	/* Investigate privileges. */
+	if (getuid() == 0) {
+		snprintf(service, PORT_LEN, "%d", ntohs(ent->s_port));
+	}
+	else {
+		snprintf(service, PORT_LEN, "%d", NON_PRIVILEGED_PORT);
+	}
 }
 
 /**
@@ -114,8 +119,12 @@ concat_paths(const char *dirpath, const char *fname, size_t *size)
 	*size = strlen(dirpath) + strlen(fname);
 
 	/* Build the string */
-	bzero(filepath, FILEPATH_LEN);
+	bzero(filepath, *size);
 	strcat(filepath, dirpath);
+	/* Add trailing / to directory path if necessary. */
+	if (dirpath[strlen(dirpath)-1] != '/') {
+		strcat(filepath, "/");
+	}
 	strcat(filepath, fname);
 
 	return filepath;
@@ -322,9 +331,14 @@ generic_server()
 }
 
 int
-main()
+main(int argc, char **argv)
 {
 	struct sigaction action;
+
+	/* Set directory. */
+	if (argc == 1)
+		usage(argv[0]);
+	dirpath = argv[1];
 
 	action.sa_handler = timeout_handler;
 	sigemptyset(&action.sa_mask);
