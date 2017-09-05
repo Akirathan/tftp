@@ -76,7 +76,11 @@ resolve_service_by_privileges(char *service)
 void
 random_service(char *service)
 {
-	service = "4568";
+	int rndnum = rand() % UINT16_MAX;
+
+	if (rndnum <= 1024)
+		rndnum += 1024;
+	snprintf(service, PORT_LEN, "%d", rndnum);
 }
 
 /**
@@ -246,20 +250,12 @@ timeout_handler(int signum)
 	longjmp(timeoutbuf, 1);
 }
 
-/**
- * Creates generic server that binds to IPv4 and IPv6.
- */
 void
-generic_server()
+rebind(const char *service)
 {
-	int error, n;
-	uint8_t buff[DATA_LEN];
-	char service[PORT_LEN];
+	int error;
 	struct addrinfo *res, hints;
-	struct protoent *udp_protocol;
-	tftp_header_t hdr;
-
-	udp_protocol = getprotobyname("udp");
+	struct protoent *udp_protocol = getprotobyname("udp");
 
 	memset(&hints, 0, sizeof (hints));
 	hints.ai_family = AF_UNSPEC;
@@ -267,12 +263,9 @@ generic_server()
 	hints.ai_protocol = udp_protocol->p_proto;
 	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
 
-	resolve_service_by_privileges(service);
-
 	/* getaddrinfo call that is suitable for binding and then accepting. */
-	if ((error = getaddrinfo(NULL, service, &hints, &res)) != 0) {
+	if ((error = getaddrinfo(NULL, service, &hints, &res)) != 0)
 		err(EXIT_FAILURE, "getaddrinfo: %s", gai_strerror(error));
-	}
 
 	/* Create socket. */
 	if ((client_sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1)
@@ -282,6 +275,24 @@ generic_server()
 	if (bind(client_sock, res->ai_addr, res->ai_addrlen) == -1)
 		err(EXIT_FAILURE, "bind");
 
+	freeaddrinfo(res);
+}
+
+/**
+ * Creates generic server that binds to IPv4 and IPv6.
+ */
+void
+generic_server()
+{
+	int n;
+	uint8_t buff[DATA_LEN];
+	char service[PORT_LEN];
+	tftp_header_t hdr;
+
+	/* Initial binding. */
+	resolve_service_by_privileges(service);
+	rebind(service);
+
 	/* Receive socket from client. */
 	while ((n = recvfrom(client_sock, buff, DATA_LEN, 0, &client_addr,
 			&client_addr_len)) != 0) {
@@ -290,16 +301,7 @@ generic_server()
 		if (first_received) {
 			close(client_sock);
 			random_service(service);
-			if ((error = getaddrinfo(NULL, service, &hints, &res)) != 0)
-				err(EXIT_FAILURE, "getaddrinfo: %s", gai_strerror(error));
-
-			if ((client_sock = socket(res->ai_family, res->ai_socktype,
-					res->ai_protocol)) == -1) {
-				err(EXIT_FAILURE, "socket");
-			}
-			if (bind(client_sock, res->ai_addr, res->ai_addrlen) == -1)
-				err(EXIT_FAILURE, "bind");
-
+			rebind(service);
 			first_received = 0;
 		}
 
@@ -325,9 +327,12 @@ generic_server()
 			/* Client should not initiate communication with other opcodes */
 			break;
 		}
-	}
 
-	freeaddrinfo(res);
+		/* Rebind to default service (port). */
+		resolve_service_by_privileges(service);
+		rebind(service);
+		first_received = 1;
+	}
 }
 
 int
