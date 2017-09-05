@@ -30,7 +30,7 @@ static struct sockaddr client_addr;
 static socklen_t client_addr_len = sizeof(client_addr);
 static jmp_buf timeoutbuf;
 static unsigned int timeout = 3;
-static char *port = NULL;
+static char port[PORT_LEN] = "0";
 
 static const char *const err_msgs[] = {
 		"Undefined",
@@ -60,8 +60,8 @@ resolve_service_by_privileges(char *service)
 	struct servent *ent;
 
 	/* Port specified as option. */
-	if (port != NULL) {
-		service = port;
+	if (port[0] != 0) {
+		strncpy(service, port, PORT_LEN);
 		return;
 	}
 	/* Root privileges. */
