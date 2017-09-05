@@ -201,6 +201,7 @@ write_file(const char *fname)
 			else {
 				fprintf(stderr, "Unexpected opcode, terminating connection.");
 			}
+			break;
 		}
 	}
 
@@ -260,6 +261,7 @@ read_file(const char *filename)
 			else {
 				fprintf(stderr, "Unexpected opcode, terminating connection.");
 			}
+			break;
 		}
 	} while (bufsize == DATA_LEN);
 }
