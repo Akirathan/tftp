@@ -32,7 +32,7 @@ static jmp_buf timeoutbuf;
 static unsigned int timeout = 3;
 static char *port = NULL;
 
-const char *const err_msgs[] = {
+static const char *const err_msgs[] = {
 		"Undefined",
 		"File not found",
 		"Access violation",
@@ -142,7 +142,7 @@ concat_paths(const char *dirpath, const char *fname, size_t *size)
 }
 
 /**
- * Client writes to file.
+ * Client writes to file. File is created if it does not exist.
  */
 void
 write_file(const char *fname)
@@ -153,9 +153,6 @@ write_file(const char *fname)
 	size_t fpath_len;
 	uint16_t blocknum = 1;
 	int last_packet = 0;
-
-	/* Check if files can be created */
-	// ...
 
 	fpath = concat_paths(dirpath, fname, &fpath_len);
 	if ((file = fopen(fpath, "w")) == NULL)
@@ -197,7 +194,13 @@ write_file(const char *fname)
 		}
 		else {
 			/* Error occured - terminate connection */
-			break;
+			if (hdr.opcode == OPCODE_ERR) {
+				fprintf(stderr, "Error: %s, message: %s",
+						err_msgs[hdr.error_code], hdr.error_msg);
+			}
+			else {
+				fprintf(stderr, "Unexpected opcode, terminating connection.");
+			}
 		}
 	}
 
@@ -244,9 +247,19 @@ read_file(const char *filename)
 				/* ACK received. */
 				blocknum++;
 			}
+			else {
+				/* Error: other blocknum acknowledged. */
+			}
 		}
 		else {
-
+			/* Error occured - terminate connection */
+			if (hdr.opcode == OPCODE_ERR) {
+				fprintf(stderr, "Error: %s, message: %s",
+						err_msgs[hdr.error_code], hdr.error_msg);
+			}
+			else {
+				fprintf(stderr, "Unexpected opcode, terminating connection.");
+			}
 		}
 	} while (bufsize == DATA_LEN);
 }
