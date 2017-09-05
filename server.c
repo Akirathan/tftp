@@ -21,16 +21,16 @@
 #include "tftp.h"
 #include "file_op.h"
 
-char *dirpath;
-char filepath[FILEPATH_LEN];
-int first_received = 1;
-tftp_mode_t mode;
-int client_sock;
-struct sockaddr client_addr;
-socklen_t client_addr_len = sizeof(client_addr);
-jmp_buf timeoutbuf;
-unsigned int timeout = 3;
-char *port = NULL;
+static char *dirpath;
+static char filepath[FILEPATH_LEN];
+static int first_received = 1;
+static tftp_mode_t mode;
+static int client_sock;
+static struct sockaddr client_addr;
+static socklen_t client_addr_len = sizeof(client_addr);
+static jmp_buf timeoutbuf;
+static unsigned int timeout = 3;
+static char *port = NULL;
 
 const char *const err_msgs[] = {
 		"Undefined",
@@ -359,7 +359,8 @@ process_opts(int argc, char **argv)
 		}
 	}
 
-	dirpath = argv[optind];
+	if ((dirpath = argv[optind]) == NULL)
+		print_usage(argv[0]);
 }
 
 int
