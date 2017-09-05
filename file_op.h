@@ -14,8 +14,6 @@
 #include <err.h>
 #include "tftp.h"
 
-#define WRITEBUF_LEN	256
-
 void read_file_convert(FILE *file, tftp_mode_t mode, char *buf, size_t *bufsize,
 		size_t maxbufsize);
 void write_file_convert(FILE *file, tftp_mode_t mode, const char *packet,
