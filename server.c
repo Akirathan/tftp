@@ -30,6 +30,7 @@ struct sockaddr client_addr;
 socklen_t client_addr_len = sizeof(client_addr);
 jmp_buf timeoutbuf;
 unsigned int timeout = 3;
+char *port = NULL;
 
 const char *const err_msgs[] = {
 		"Undefined",
@@ -43,9 +44,9 @@ const char *const err_msgs[] = {
 };
 
 void
-usage(char *program)
+print_usage(char *program)
 {
-	fprintf(stderr, "Usage: %s [-h host] [-p port] directory", program);
+	fprintf(stderr, "Usage: %s [-p port] [-t timeout] directory", program);
 	exit(1);
 }
 
@@ -58,15 +59,21 @@ resolve_service_by_privileges(char *service)
 {
 	struct servent *ent;
 
-	if ((ent = getservbyname("tftp", "udp")) == NULL)
-		err(EXIT_FAILURE, "getservbyname");
-
-	/* Investigate privileges. */
-	if (getuid() == 0) {
+	/* Port specified as option. */
+	if (port != NULL) {
+		service = port;
+		return;
+	}
+	/* Root privileges. */
+	else if (getuid() == 0) {
+		if ((ent = getservbyname("tftp", "udp")) == NULL)
+			err(EXIT_FAILURE, "getservbyname");
 		snprintf(service, PORT_LEN, "%d", ntohs(ent->s_port));
 	}
+	/* Error. */
 	else {
-		snprintf(service, PORT_LEN, "%d", NON_PRIVILEGED_PORT);
+		fprintf(stderr, "No port specified and not enough privileges.");
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -335,21 +342,39 @@ generic_server()
 	}
 }
 
+void
+process_opts(int argc, char **argv)
+{
+	int opt;
+
+	while ((opt = getopt(argc, argv, "p:t:")) != -1) {
+		if (opt == 'p') {
+			strncpy(port, optarg, PORT_LEN);
+		}
+		else if (opt == 't') {
+			timeout = atoi(optarg);
+		}
+		else if (opt == '?') {
+			print_usage(argv[0]);
+		}
+	}
+
+	dirpath = argv[optind];
+}
+
 int
 main(int argc, char **argv)
 {
 	struct sigaction action;
 
-	/* Set directory. */
-	if (argc == 1)
-		usage(argv[0]);
-	dirpath = argv[1];
+	process_opts(argc, argv);
 
+	/* Set timeout action handler. */
 	action.sa_handler = timeout_handler;
 	sigemptyset(&action.sa_mask);
 	action.sa_flags = 0;
-
 	if (sigaction(SIGALRM, &action, NULL) < 0)
 		err(EXIT_FAILURE, "sigaction");
+
 	generic_server();
 }
