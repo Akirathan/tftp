@@ -149,6 +149,33 @@ concat_paths(const char *dirpath, const char *fname)
 }
 
 /**
+ * Processes header with unexpected opcode. Sends error header if necessary.
+ */
+void
+unexpected_hdr(tftp_header_t *hdr)
+{
+	tftp_header_t errorhdr;
+
+	errorhdr.opcode = OPCODE_ERR;
+
+	/* Check unknown opcode. */
+	if (OPCODE_RRQ <= hdr->opcode && hdr->opcode <= OPCODE_ERR) {
+		/* Send error header: Illegal TFTP operation. */
+		errorhdr.error_code = EOP;
+		send_hdr(&errorhdr);
+	}
+	else if (hdr->opcode == OPCODE_ERR) {
+		/* Print error header. */
+		fprintf(stderr, "Received error packet, code: %s, message: %s",
+				err_msgs[hdr->error_code], hdr->error_msg);
+	}
+	else {
+		/* Unexpected header opcode. */
+		fprintf(stderr, "Received header with unexpected opcode.");
+	}
+}
+
+/**
  * Client uploads a file. File is appended or created if it does not exist.
  */
 void
@@ -216,14 +243,8 @@ write_file(const char *fname)
 				break;
 		}
 		else {
-			/* Error occured - terminate connection. */
-			if (hdr.opcode == OPCODE_ERR) {
-				fprintf(stderr, "Error: %s, message: %s",
-						err_msgs[hdr.error_code], hdr.error_msg);
-			}
-			else {
-				fprintf(stderr, "Unexpected opcode, terminating connection.");
-			}
+			/* Error occured - print error and terminate connection. */
+			unexpected_hdr(&hdr);
 			break;
 		}
 	}
@@ -291,14 +312,8 @@ read_file(const char *filename)
 			}
 		}
 		else {
-			/* Error occured - terminate connection. */
-			if (hdr.opcode == OPCODE_ERR) {
-				fprintf(stderr, "Error: %s, message: %s",
-						err_msgs[hdr.error_code], hdr.error_msg);
-			}
-			else {
-				fprintf(stderr, "Unexpected opcode, terminating connection.");
-			}
+			/* Error occured - print error and terminate connection. */
+			unexpected_hdr(&hdr);
 			break;
 		}
 	} while (bufsize == DATA_LEN);
