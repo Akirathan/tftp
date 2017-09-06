@@ -4,18 +4,13 @@ LDFLAGS =
 
 OBJ_DIR = ./obj
 
-SERVER_BIN = server
-CLIENT_BIN = client
+SERVER_BIN = tftp_server
 
 OBJ += $(OBJ_DIR)/server.o
 OBJ += $(OBJ_DIR)/tftp.o
 OBJ += $(OBJ_DIR)/file_op.o
-CLIENT_OBJ = $(OBJ_DIR)/client.o
 
-all: $(CLIENT_BIN) $(SERVER_BIN)
-
-$(CLIENT_BIN): $(CLIENT_OBJ)
-	$(CC) $(LDFLAGS) $^ -o $@
+all: $(SERVER_BIN)
 
 $(SERVER_BIN):	$(OBJ)
 	$(CC) $(LDFLAGS) $^ -o $@
@@ -25,4 +20,4 @@ $(OBJ_DIR)/%.o: %.c
 
 .PHONY:	clean
 clean:
-	rm -rf $(SERVER_BIN) $(CLIENT_BIN) $(OBJ)
+	rm -rf $(SERVER_BIN) $(OBJ)
