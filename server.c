@@ -48,7 +48,7 @@ resolve_service_by_privileges(char *service)
 	struct servent *ent;
 
 	/* Port specified as option. */
-	if (port[0] != 0) {
+	if (port[0] != '0') {
 		strncpy(service, port, PORT_LEN);
 		return;
 	}
@@ -439,6 +439,9 @@ process_opts(int argc, char **argv)
 			usage(argv[0]);
 		}
 	}
+
+	if (optind != argc - 1)
+		usage(argv[0]);
 
 	if ((dirpath = argv[optind]) == NULL)
 		usage(argv[0]);
