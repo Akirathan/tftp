@@ -11,6 +11,17 @@ char filename[FILENAME_LEN];
 char errmsg[ERRMSG_LEN];
 uint8_t buf[DATA_LEN];
 
+const char *const err_msgs[] = {
+		"Undefined",
+		"File not found",
+		"Access violation",
+		"Disk full or allocation exceeded",
+		"Illegal TFTP operation",
+		"Unknown transfer ID",
+		"File already exists",
+		"No such user"
+};
+
 static tftp_mode_t mode_from_str(const char *str);
 static void str_from_mode(char *str, const tftp_mode_t mode);
 static void to_lower_str(char *dest, const char *src);
@@ -117,7 +128,8 @@ header_len(const tftp_header_t *hdr)
 
 	case OPCODE_ERR:
 		size += 2; /* error code */
-		size += strlen(hdr->error_msg) + 1; /* error message */
+		if (hdr->error_msg != NULL)
+			size += strlen(hdr->error_msg) + 1; /* error message */
 		break;
 	}
 
@@ -242,7 +254,23 @@ copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 		buf_idx += 2;
 
 		/* Error message */
-		strncpy((char *) buf_idx, hdr->error_msg, ERRMSG_LEN);
+		if (hdr->error_msg == NULL) {
+			*buf_idx = '\0';
+		}
+		else {
+			strncpy((char *) buf_idx, hdr->error_msg, ERRMSG_LEN);
+		}
 		break;
 	}
+}
+
+/**
+ * Fills in hdr struct with error opcode and corresponding message.
+ */
+void
+fill_error_hdr(tftp_header_t *hdr, uint16_t errcode)
+{
+	hdr->opcode = OPCODE_ERR;
+	hdr->error_code = errcode;
+	hdr->error_msg = err_msgs[errcode];
 }

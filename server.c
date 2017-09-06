@@ -18,17 +18,6 @@ static jmp_buf timeoutbuf;
 static unsigned int timeout = 3;
 static char port[PORT_LEN] = "0";
 
-static const char *const err_msgs[] = {
-		"Undefined",
-		"File not found",
-		"Access violation",
-		"Disk full or allocation exceeded",
-		"Illegal TFTP operation",
-		"Unknown transfer ID",
-		"File already exists",
-		"No such user"
-};
-
 void
 print_usage(char *program)
 {
@@ -114,8 +103,7 @@ receive_hdr(tftp_header_t *hdr)
 	for (size_t i = 0; i < 14; ++i) {
 		if (old_client_addrdata[i] != client_addr.sa_data[i]) {
 			/* Error: Unknown client's TID. */
-			errorhdr.opcode = OPCODE_ERR;
-			errorhdr.error_code = ETID;
+			fill_error_hdr(&errorhdr, ETID);
 			send_hdr(&errorhdr);
 			return 0;
 		}
@@ -156,18 +144,17 @@ unexpected_hdr(tftp_header_t *hdr)
 {
 	tftp_header_t errorhdr;
 
-	errorhdr.opcode = OPCODE_ERR;
 
 	/* Check unknown opcode. */
 	if (OPCODE_RRQ <= hdr->opcode && hdr->opcode <= OPCODE_ERR) {
 		/* Send error header: Illegal TFTP operation. */
-		errorhdr.error_code = EOP;
+		fill_error_hdr(&errorhdr, EOP);
 		send_hdr(&errorhdr);
 	}
 	else if (hdr->opcode == OPCODE_ERR) {
 		/* Print error header. */
-		fprintf(stderr, "Received error packet, code: %s, message: %s",
-				err_msgs[hdr->error_code], hdr->error_msg);
+		fprintf(stderr, "Received error packet, code: %d, message: %s",
+				hdr->error_code, hdr->error_msg);
 	}
 	else {
 		/* Unexpected header opcode. */
@@ -184,25 +171,24 @@ write_file(const char *fname)
 	tftp_header_t hdr;
 	FILE *file;
 	char *fpath;
-	uint16_t blocknum = 1;
+	uint16_t blocknum = 1, errcode;
 	int last_packet = 0;
 
 	fpath = concat_paths(dirpath, fname);
 	if ((file = fopen(fpath, "a")) == NULL) {
-		hdr.opcode = OPCODE_ERR;
-
 		/* Error: File not found. */
 		/*if (errno == ENOENT) {
 			hdr.error_code = ENFOUND;
 		}*/
 		/* Error: Disk full. */
 		if (errno == EDQUOT) {
-			hdr.error_code = EALLOC;
+			errcode = EALLOC;
 		}
 		/* Error: Access violation. */
 		else if (errno == EACCES) {
-			hdr.error_code = EACCESS;
+			errcode = EACCESS;
 		}
+		fill_error_hdr(&hdr, errcode);
 		send_hdr(&hdr);
 		return;
 	}
@@ -258,7 +244,7 @@ write_file(const char *fname)
 void
 read_file(const char *filename)
 {
-	uint16_t blocknum = 1;
+	uint16_t blocknum = 1, errcode;
 	tftp_header_t hdr;
 	FILE *file;
 	uint8_t buf[DATA_LEN];
@@ -270,16 +256,17 @@ read_file(const char *filename)
 	if ((file = fopen(fpath, "r")) == NULL) {
 		/* Error: File not found. */
 		if (errno == ENOENT) {
-			hdr.error_code = ENFOUND;
+			errcode = ENFOUND;
 		}
 		/* Error: Disk full. */
 		else if (errno == EDQUOT) {
-			hdr.error_code = EALLOC;
+			errcode = EALLOC;
 		}
 		/* Error: Access violation. */
 		else if (errno == EACCES) {
-			hdr.error_code = EACCESS;
+			errcode = EACCESS;
 		}
+		fill_error_hdr(&hdr, errcode);
 		send_hdr(&hdr);
 		return;
 	}

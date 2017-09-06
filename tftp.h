@@ -70,7 +70,7 @@ typedef struct {
 
 		struct {
 			uint16_t err_code;
-			char *err_msg;
+			const char *err_msg;
 		} err;
 	} u;
 } tftp_header_t;
@@ -87,6 +87,7 @@ typedef struct {
 size_t header_len(const tftp_header_t *hdr);
 void copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr);
 void read_packet(tftp_header_t *hdr, uint8_t *packet, size_t packet_len);
+void fill_error_hdr(tftp_header_t *hdr, uint16_t errcode);
 
 void tests();
 
