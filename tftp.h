@@ -89,6 +89,4 @@ void copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr);
 void read_packet(tftp_header_t *hdr, uint8_t *packet, size_t packet_len);
 void fill_error_hdr(tftp_header_t *hdr, uint16_t errcode);
 
-void tests();
-
 #endif /* TFTP_H_ */

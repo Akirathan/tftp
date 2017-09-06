@@ -26,25 +26,8 @@ static tftp_mode_t mode_from_str(const char *str);
 static void str_from_mode(char *str, const tftp_mode_t mode);
 static void to_lower_str(char *dest, const char *src);
 
-void
-tests()
-{
-	tftp_header_t hdr;
-	uint8_t buf[10];
-
-	hdr.opcode = OPCODE_ACK;
-	hdr.ack_blocknum = 3;
-	copy_to_buffer(buf, &hdr);
-
-	hdr.opcode = OPCODE_ERR;
-	hdr.error_code = 7;
-	hdr.error_msg = "hi";
-	copy_to_buffer(buf, &hdr);
-
-}
-
 /**
- * Converts whole string to lower case
+ * Converts whole string to lower case.
  */
 static void
 to_lower_str(char *dest, const char *src)
@@ -61,6 +44,9 @@ to_lower_str(char *dest, const char *src)
 	*dest_idx = '\0';
 }
 
+/**
+ * Converts string to mode.
+ */
 static tftp_mode_t
 mode_from_str(const char *str)
 {
