@@ -119,7 +119,7 @@ convert(const char c1, const char c2, char *c)
 }
 
 /**
- * Writes given buffer into a file and converts data if necessary.
+ * Writes given buffer into a file and converts data if mode is MODE_NETASCII.
  * Conversion:
  *   \r \0 --> \r
  * 	 \r \n --> \n
