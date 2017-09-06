@@ -30,7 +30,6 @@ static int client_sock;
 static struct sockaddr client_addr;
 static socklen_t client_addr_len = sizeof(client_addr);
 static jmp_buf timeoutbuf;
-static jmp_buf abortbuf;
 static unsigned int timeout = 3;
 static char port[PORT_LEN] = "0";
 
@@ -104,7 +103,11 @@ send_hdr(const tftp_header_t *hdr)
 		err(EXIT_FAILURE, "sendto");
 }
 
-void
+/**
+ * Receives packet from client and fills in the hdr structure from this packet.
+ * When unknown TID error occurs, sends error packet and returns 0.
+ */
+int
 receive_hdr(tftp_header_t *hdr)
 {
 	int n = 0;
@@ -129,12 +132,13 @@ receive_hdr(tftp_header_t *hdr)
 			errorhdr.opcode = OPCODE_ERR;
 			errorhdr.error_code = ETID;
 			send_hdr(&errorhdr);
-			longjmp(abortbuf, 1);
+			return 0;
 		}
 	}
 
 	/* Convert packet to tftp_header_t. */
 	read_packet(hdr, buf, n);
+	return 1;
 }
 
 /**
@@ -199,7 +203,8 @@ write_file(const char *fname)
 
 	for (;;) {
 		alarm(timeout);
-		receive_hdr(&hdr);
+		if (!receive_hdr(&hdr))
+			break;
 		alarm(0);
 
 		if (hdr.opcode == OPCODE_DATA) {
@@ -286,7 +291,8 @@ read_file(const char *filename)
 		send_hdr(&hdr);
 		/* Wait for ACK. */
 		alarm(timeout);
-		receive_hdr(&hdr);
+		if (!receive_hdr(&hdr))
+			break;
 		alarm(0);
 
 		/* Check if received packet is of ACK type. */
@@ -397,8 +403,6 @@ generic_server()
 			/* Client should not initiate communication with other opcodes */
 			break;
 		}
-
-		setjmp(abortbuf);
 
 		/* Rebind to default service (port). */
 		resolve_service_by_privileges(service);
