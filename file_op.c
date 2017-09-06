@@ -12,6 +12,9 @@ static char prev_char;
  * buffer is \r */
 static int from_prev = 0;
 
+static void write_char(const char c, FILE *file);
+static int convert(const char c1, const char c2, char *c);
+
 /**
  * Fills the buffer with data read (and converted if necessary) from file.
  * Assign total buffer size to bufsize.
@@ -93,10 +96,12 @@ write_char(const char c, FILE *file)
 }
 
 /**
- * Conversion:
+ * Performs this conversion (netascii):
  *   \r \0 --> \r
  *   \r \n --> \n
  *   \n \r --> \n
+ *
+ * Returns 1 if conversion is necessary.
  */
 static int
 convert(const char c1, const char c2, char *c)
@@ -119,7 +124,7 @@ convert(const char c1, const char c2, char *c)
 }
 
 /**
- * Writes given buffer into a file and converts data if mode is MODE_NETASCII.
+ * Writes given packet into a file and converts data if mode is MODE_NETASCII.
  * Conversion:
  *   \r \0 --> \r
  * 	 \r \n --> \n

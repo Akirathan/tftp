@@ -3,6 +3,9 @@
  *
  *  Created on: Sep 3, 2017
  *      Author: mayfa
+ *
+ * This file contains declarations for functions that are necessary for writing
+ * or reading to files with netascii conversion.
  */
 
 #ifndef FILE_OP_H_
