@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <err.h>
+#include <errno.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
@@ -90,9 +91,6 @@ random_service(char *service)
 	snprintf(service, PORT_LEN, "%d", rndnum);
 }
 
-/**
- * Converts header to buffer and sends it to the client.
- */
 void
 send_hdr(const tftp_header_t *hdr)
 {
@@ -111,12 +109,12 @@ receive_hdr(tftp_header_t *hdr)
 	int n = 0;
 	uint8_t buf[PACKET_LEN];
 
-	/* Receive packet */
+	/* Receive packet. */
 	if ((n = recvfrom(client_sock, buf, PACKET_LEN, 0, &client_addr,
 			&client_addr_len)) == -1)
 		err(EXIT_FAILURE, "recvfrom");
 
-	/* Convert packet to tftp_header_t */
+	/* Convert packet to tftp_header_t. */
 	read_packet(hdr, buf, n);
 }
 
@@ -142,7 +140,7 @@ concat_paths(const char *dirpath, const char *fname, size_t *size)
 }
 
 /**
- * Client writes to file. File is created if it does not exist.
+ * Client uploads a file. File is appended or created if it does not exist.
  */
 void
 write_file(const char *fname)
@@ -155,10 +153,26 @@ write_file(const char *fname)
 	int last_packet = 0;
 
 	fpath = concat_paths(dirpath, fname, &fpath_len);
-	if ((file = fopen(fpath, "w")) == NULL)
-		err(EXIT_FAILURE, "fopen");
+	if ((file = fopen(fpath, "a")) == NULL) {
+		hdr.opcode = OPCODE_ERR;
 
-	/* Send ACK */
+		/* Error: File not found. */
+		/*if (errno == ENOENT) {
+			hdr.error_code = ENFOUND;
+		}*/
+		/* Error: Disk full. */
+		if (errno == EDQUOT) {
+			hdr.error_code = EALLOC;
+		}
+		/* Error: Access violation. */
+		else if (errno == EACCES) {
+			hdr.error_code = EACCESS;
+		}
+		send_hdr(&hdr);
+		return;
+	}
+
+	/* Send ACK. */
 	hdr.opcode = OPCODE_ACK;
 	hdr.ack_blocknum = 0;
 	setjmp(timeoutbuf);
@@ -170,12 +184,12 @@ write_file(const char *fname)
 		alarm(0);
 
 		if (hdr.opcode == OPCODE_DATA) {
-			/* Check if last data packet was received */
+			/* Check if last data packet was received. */
 			if (hdr.data_len < DATA_LEN) {
 				last_packet = 1;
 			}
 
-			/* Send ACK */
+			/* Send ACK. */
 			if (hdr.data_blocknum == blocknum) {
 				hdr.opcode = OPCODE_ACK;
 				hdr.ack_blocknum = blocknum;
@@ -183,17 +197,17 @@ write_file(const char *fname)
 				blocknum++;
 			}
 			else {
-				/* TODO Received data with unexpected block number */
+				/* TODO Received data with unexpected block number. */
 			}
 
-			/* Write data to file */
+			/* Write data to file. */
 			write_file_convert(file, mode, (char *) hdr.data_data, hdr.data_len);
 
 			if (last_packet)
 				break;
 		}
 		else {
-			/* Error occured - terminate connection */
+			/* Error occured - terminate connection. */
 			if (hdr.opcode == OPCODE_ERR) {
 				fprintf(stderr, "Error: %s, message: %s",
 						err_msgs[hdr.error_code], hdr.error_msg);
@@ -209,7 +223,7 @@ write_file(const char *fname)
 }
 
 /**
- * Client sent RRQ, server should now send first data packet.
+ * Client downloads a file.
  */
 void
 read_file(const char *filename)
@@ -223,19 +237,33 @@ read_file(const char *filename)
 
 	/* Initiate and build filepath. */
 	fpath = concat_paths(dirpath, filename, &fpath_len);
-	if ((file = fopen(fpath, "r")) == NULL)
-		err(EXIT_FAILURE, "fopen");
+	if ((file = fopen(fpath, "r")) == NULL) {
+		/* Error: File not found. */
+		if (errno == ENOENT) {
+			hdr.error_code = ENFOUND;
+		}
+		/* Error: Disk full. */
+		else if (errno == EDQUOT) {
+			hdr.error_code = EALLOC;
+		}
+		/* Error: Access violation. */
+		else if (errno == EACCES) {
+			hdr.error_code = EACCESS;
+		}
+		send_hdr(&hdr);
+		return;
+	}
 
 
 	do {
 		read_file_convert(file, mode, (char *) buf, &bufsize, DATA_LEN);
 
+		setjmp(timeoutbuf);
 		/* Fill and send header. */
 		hdr.opcode = OPCODE_DATA;
 		hdr.data_blocknum = blocknum;
 		hdr.data_data = buf;
 		hdr.data_len = bufsize;
-		setjmp(timeoutbuf);
 		send_hdr(&hdr);
 		/* Wait for ACK. */
 		alarm(timeout);
@@ -249,11 +277,12 @@ read_file(const char *filename)
 				blocknum++;
 			}
 			else {
-				/* Error: other blocknum acknowledged. */
+				/* Error: other blocknum acknowledged - resend data. */
+				longjmp(timeoutbuf, 1);
 			}
 		}
 		else {
-			/* Error occured - terminate connection */
+			/* Error occured - terminate connection. */
 			if (hdr.opcode == OPCODE_ERR) {
 				fprintf(stderr, "Error: %s, message: %s",
 						err_msgs[hdr.error_code], hdr.error_msg);

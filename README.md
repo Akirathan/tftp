@@ -10,3 +10,9 @@ server [-p port] [-t timeout] directory
   - Specifies timeout value in seconds between every packet retransmition (this happens in case when the last packet was not acknowledged).
 - directory
   - 
+
+## Implementation
+If user wants to put a file to the server eg. upload a file and the file does not exist yet, it is created. If it already exists, it is appended.
+
+## Testing
+Testing can be done with `tftp-hpa` client.

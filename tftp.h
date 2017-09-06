@@ -27,6 +27,16 @@
 #define DATA_LEN			512
 #define PACKET_LEN			DATA_LEN + 4
 
+/* Error defines. */
+#define EUNDEF				0 /* Undefined */
+#define ENFOUND				1 /* File not found */
+#define EACCESS				2 /* Access violation */
+#define EALLOC				3 /* Disk full or allocation exceeded */
+#define EOP					4 /* Illegal TFTP operation */
+#define ETID				5 /* Unknown TID */
+#define EFEXIST				6 /* File already exists */
+#define EUSER				7 /* No such user */
+
 typedef enum {
 	OPCODE_RRQ = 1,
 	OPCODE_WRQ = 2,
