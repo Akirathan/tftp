@@ -137,7 +137,7 @@ concat_paths(const char *dirpath, const char *fname)
 }
 
 /**
- * Processes header with unexpected opcode. Sends error header if necessary.
+ * Processes header with unexpected opcode. Sends error packet if necessary.
  */
 void
 unexpected_hdr(tftp_header_t *hdr)
@@ -164,6 +164,8 @@ unexpected_hdr(tftp_header_t *hdr)
 
 /**
  * Client uploads a file. File is appended or created if it does not exist.
+ * This function manages the whole connection (downloading/uploading of one
+ * file).
  */
 void
 write_file(const char *fname)
@@ -174,6 +176,7 @@ write_file(const char *fname)
 	uint16_t blocknum = 1, errcode;
 	int last_packet = 0;
 
+	/* Open file for writing. */
 	fpath = concat_paths(dirpath, fname);
 	if ((file = fopen(fpath, "a")) == NULL) {
 		/* Error: File not found. */
@@ -193,16 +196,17 @@ write_file(const char *fname)
 		return;
 	}
 
-	/* Send ACK. */
+	/* Send first ACK. */
 	hdr.opcode = OPCODE_ACK;
 	hdr.ack_blocknum = 0;
-	setjmp(timeoutbuf);
 	send_hdr(&hdr);
 
 	for (;;) {
 		alarm(timeout);
-		if (!receive_hdr(&hdr))
+		if (!receive_hdr(&hdr)) {
+			alarm(0);
 			break;
+		}
 		alarm(0);
 
 		if (hdr.opcode == OPCODE_DATA) {
@@ -211,15 +215,17 @@ write_file(const char *fname)
 				last_packet = 1;
 			}
 
-			/* Send ACK. */
+			/* Send ACK for corresponding block number. */
 			if (hdr.data_blocknum == blocknum) {
 				hdr.opcode = OPCODE_ACK;
 				hdr.ack_blocknum = blocknum;
-				send_hdr(&hdr);
 				blocknum++;
+				setjmp(timeoutbuf);
+				send_hdr(&hdr);
 			}
 			else {
-				/* TODO Received data with unexpected block number. */
+				/* Received data with unexpected block number - resend ACK. */
+				longjmp(timeoutbuf, 1);
 			}
 
 			/* Write data to file. */
@@ -283,8 +289,10 @@ read_file(const char *filename)
 		send_hdr(&hdr);
 		/* Wait for ACK. */
 		alarm(timeout);
-		if (!receive_hdr(&hdr))
+		if (!receive_hdr(&hdr)) {
+			alarm(0);
 			break;
+		}
 		alarm(0);
 
 		/* Check if received packet is of ACK type. */
