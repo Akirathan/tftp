@@ -5,22 +5,7 @@
  *      Author: mayfa
  */
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <err.h>
-#include <errno.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <setjmp.h>
-#include <signal.h>
-#include "tftp.h"
-#include "file_op.h"
+#include "server.h"
 
 static char *dirpath;
 static char filepath[FILEPATH_LEN];
@@ -142,16 +127,17 @@ receive_hdr(tftp_header_t *hdr)
 }
 
 /**
- * Concatenates directory path with filename. The size of result is assigned
- * to size parameter.
+ * Concatenates directory path with filename.
  */
 char *
-concat_paths(const char *dirpath, const char *fname, size_t *size)
+concat_paths(const char *dirpath, const char *fname)
 {
-	*size = strlen(dirpath) + strlen(fname);
+	size_t size;
+
+	size = strlen(dirpath) + strlen(fname);
 
 	/* Build the string */
-	bzero(filepath, *size);
+	bzero(filepath, size);
 	strcat(filepath, dirpath);
 	/* Add trailing / to directory path if necessary. */
 	if (dirpath[strlen(dirpath)-1] != '/') {
@@ -171,11 +157,10 @@ write_file(const char *fname)
 	tftp_header_t hdr;
 	FILE *file;
 	char *fpath;
-	size_t fpath_len;
 	uint16_t blocknum = 1;
 	int last_packet = 0;
 
-	fpath = concat_paths(dirpath, fname, &fpath_len);
+	fpath = concat_paths(dirpath, fname);
 	if ((file = fopen(fpath, "a")) == NULL) {
 		hdr.opcode = OPCODE_ERR;
 
@@ -256,11 +241,11 @@ read_file(const char *filename)
 	tftp_header_t hdr;
 	FILE *file;
 	uint8_t buf[DATA_LEN];
-	size_t fpath_len, bufsize;
+	size_t bufsize;
 	char *fpath;
 
 	/* Initiate and build filepath. */
-	fpath = concat_paths(dirpath, filename, &fpath_len);
+	fpath = concat_paths(dirpath, filename);
 	if ((file = fopen(fpath, "r")) == NULL) {
 		/* Error: File not found. */
 		if (errno == ENOENT) {
@@ -277,7 +262,6 @@ read_file(const char *filename)
 		send_hdr(&hdr);
 		return;
 	}
-
 
 	do {
 		read_file_convert(file, mode, (char *) buf, &bufsize, DATA_LEN);

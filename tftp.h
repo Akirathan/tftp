@@ -20,7 +20,6 @@
 #include <stddef.h>
 
 #define FILENAME_LEN		20
-#define FILEPATH_LEN		50 // TODO
 #define MODENAME_LEN		8
 #define ERRMSG_LEN			30
 #define PORT_LEN			6
