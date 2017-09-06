@@ -30,6 +30,7 @@ static int client_sock;
 static struct sockaddr client_addr;
 static socklen_t client_addr_len = sizeof(client_addr);
 static jmp_buf timeoutbuf;
+static jmp_buf abortbuf;
 static unsigned int timeout = 3;
 static char port[PORT_LEN] = "0";
 
@@ -108,11 +109,29 @@ receive_hdr(tftp_header_t *hdr)
 {
 	int n = 0;
 	uint8_t buf[PACKET_LEN];
+	char old_client_addrdata[14];
+	tftp_header_t errorhdr;
+
+	/* Copy old client's addr data value. */
+	for (size_t i = 0; i < 14; ++i) {
+		old_client_addrdata[i] = client_addr.sa_data[i];
+	}
 
 	/* Receive packet. */
 	if ((n = recvfrom(client_sock, buf, PACKET_LEN, 0, &client_addr,
 			&client_addr_len)) == -1)
 		err(EXIT_FAILURE, "recvfrom");
+
+	/* Check if client's port (TID) changed. */
+	for (size_t i = 0; i < 14; ++i) {
+		if (old_client_addrdata[i] != client_addr.sa_data[i]) {
+			/* Error: Unknown client's TID. */
+			errorhdr.opcode = OPCODE_ERR;
+			errorhdr.error_code = ETID;
+			send_hdr(&errorhdr);
+			longjmp(abortbuf, 1);
+		}
+	}
 
 	/* Convert packet to tftp_header_t. */
 	read_packet(hdr, buf, n);
@@ -378,6 +397,8 @@ generic_server()
 			/* Client should not initiate communication with other opcodes */
 			break;
 		}
+
+		setjmp(abortbuf);
 
 		/* Rebind to default service (port). */
 		resolve_service_by_privileges(service);
