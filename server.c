@@ -9,7 +9,6 @@
 
 static char *dirpath;
 static char filepath[FILEPATH_LEN];
-static int first_received = 1;
 static tftp_mode_t mode;
 static int client_sock;
 static struct sockaddr client_addr;
@@ -257,7 +256,7 @@ read_file(const char *filename)
 	size_t bufsize;
 	char *fpath;
 
-	/* Initiate and build filepath. */
+	/* Open file for reading. */
 	fpath = concat_paths(dirpath, filename);
 	if ((file = fopen(fpath, "r")) == NULL) {
 		/* Error: File not found. */
@@ -320,6 +319,10 @@ timeout_handler(int signum)
 	longjmp(timeoutbuf, 1);
 }
 
+/**
+ * Rebind to the given port ie. reopen client socket. Note that this function is
+ * called on the beginning of every connection.
+ */
 void
 rebind(const char *service)
 {
@@ -333,7 +336,7 @@ rebind(const char *service)
 	hints.ai_protocol = udp_protocol->p_proto;
 	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
 
-	/* getaddrinfo call that is suitable for binding and then accepting. */
+	/* getaddrinfo call that is suitable for binding. */
 	if ((error = getaddrinfo(NULL, service, &hints, &res)) != 0)
 		err(EXIT_FAILURE, "getaddrinfo: %s", gai_strerror(error));
 
@@ -349,12 +352,13 @@ rebind(const char *service)
 }
 
 /**
- * Creates generic server that binds to IPv4 and IPv6.
+ * Creates generic server that binds either to IPv4 or IPv6, depending on which
+ * version is supported on current platform.
  */
 void
 generic_server()
 {
-	int n;
+	int n, first_received = 1;
 	uint8_t buff[DATA_LEN];
 	char service[PORT_LEN];
 	tftp_header_t hdr;
@@ -379,7 +383,7 @@ generic_server()
 		if (n == -1)
 			err(EXIT_FAILURE, "recvfrom");
 
-		/* Read packet */
+		/* Deserialize buffer into hdr. */
 		read_packet(&hdr, buff, n);
 
 		switch (hdr.opcode) {
@@ -394,11 +398,11 @@ generic_server()
 			break;
 
 		default:
-			/* Client should not initiate communication with other opcodes */
+			/* Client should not initiate communication with other opcodes. */
 			break;
 		}
 
-		/* Rebind to default service (port). */
+		/* Prepare for new connection - rebind to default service (port). */
 		resolve_service_by_privileges(service);
 		rebind(service);
 		first_received = 1;
