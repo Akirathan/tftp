@@ -17,7 +17,21 @@ static jmp_buf timeoutbuf;
 static unsigned int timeout = 3;
 static char port[PORT_LEN] = "0";
 
-void
+static void usage(char *program);
+static void resolve_service_by_privileges(char *service);
+static void random_service(char *service);
+static void send_hdr(const tftp_header_t *hdr);
+static int receive_hdr(tftp_header_t *hdr);
+static char* concat_paths(const char *dirpath, const char *fname);
+static void unexpected_hdr(tftp_header_t *hdr);
+static void write_file(const char *fname);
+static void read_file(const char *fname);
+static void timeout_handler(int signum);
+static void rebind(const char *service);
+static void generic_server();
+static void process_opts(int argc, char **argv);
+
+static void
 usage(char *program)
 {
 	fprintf(stderr, "Usage: %s [-p port] [-t timeout] directory", program);
@@ -28,7 +42,7 @@ usage(char *program)
  * Return the port specified in options or standard TFTP port if this process
  * is ran with superuser privileges.
  */
-void
+static void
 resolve_service_by_privileges(char *service)
 {
 	struct servent *ent;
@@ -54,7 +68,7 @@ resolve_service_by_privileges(char *service)
 /**
  * Generates random non-privileged port.
  */
-void
+static void
 random_service(char *service)
 {
 	int rndnum = rand() % UINT16_MAX;
@@ -64,7 +78,7 @@ random_service(char *service)
 	snprintf(service, PORT_LEN, "%d", rndnum);
 }
 
-void
+static void
 send_hdr(const tftp_header_t *hdr)
 {
 	size_t buf_len = header_len(hdr);
@@ -80,7 +94,7 @@ send_hdr(const tftp_header_t *hdr)
  * Receives packet from client and fills in the hdr structure from this packet.
  * When unknown TID error occurs, sends error packet and returns 0.
  */
-int
+static int
 receive_hdr(tftp_header_t *hdr)
 {
 	int n = 0;
@@ -116,7 +130,7 @@ receive_hdr(tftp_header_t *hdr)
 /**
  * Concatenates directory path with filename.
  */
-char *
+static char *
 concat_paths(const char *dirpath, const char *fname)
 {
 	size_t size;
@@ -138,7 +152,7 @@ concat_paths(const char *dirpath, const char *fname)
 /**
  * Processes header with unexpected opcode. Sends error packet if necessary.
  */
-void
+static void
 unexpected_hdr(tftp_header_t *hdr)
 {
 	tftp_header_t errorhdr;
@@ -166,7 +180,7 @@ unexpected_hdr(tftp_header_t *hdr)
  * This function manages the whole connection (downloading/uploading of one
  * file).
  */
-void
+static void
 write_file(const char *fname)
 {
 	tftp_header_t hdr;
@@ -246,7 +260,7 @@ write_file(const char *fname)
 /**
  * Client downloads a file.
  */
-void
+static void
 read_file(const char *filename)
 {
 	uint16_t blocknum = 1, errcode;
@@ -313,7 +327,7 @@ read_file(const char *filename)
 	} while (bufsize == DATA_LEN);
 }
 
-void
+static void
 timeout_handler(int signum)
 {
 	longjmp(timeoutbuf, 1);
@@ -323,7 +337,7 @@ timeout_handler(int signum)
  * Rebind to the given port ie. reopen client socket. Note that this function is
  * called on the beginning of every connection.
  */
-void
+static void
 rebind(const char *service)
 {
 	int error;
@@ -355,7 +369,7 @@ rebind(const char *service)
  * Creates generic server that binds either to IPv4 or IPv6, depending on which
  * version is supported on current platform.
  */
-void
+static void
 generic_server()
 {
 	int n, first_received = 1;
@@ -409,7 +423,7 @@ generic_server()
 	}
 }
 
-void
+static void
 process_opts(int argc, char **argv)
 {
 	int opt;
