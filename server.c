@@ -18,7 +18,7 @@ static unsigned int timeout = 3;
 static char port[PORT_LEN] = "0";
 
 void
-print_usage(char *program)
+usage(char *program)
 {
 	fprintf(stderr, "Usage: %s [-p port] [-t timeout] directory", program);
 	exit(1);
@@ -422,12 +422,12 @@ process_opts(int argc, char **argv)
 			timeout = atoi(optarg);
 		}
 		else if (opt == '?') {
-			print_usage(argv[0]);
+			usage(argv[0]);
 		}
 	}
 
 	if ((dirpath = argv[optind]) == NULL)
-		print_usage(argv[0]);
+		usage(argv[0]);
 }
 
 int
