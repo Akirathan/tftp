@@ -8,7 +8,7 @@ To build the server simply run `make`, this will create `tftp_server` binary in 
 `tftp_server [-p port] [-t timeout] directory`
 
 - `p`
-	- Specifies port to bind the server to. If port is omitted and server is started with superuser privileges, server is bind to port 69 (as defined in `/etc/services`). If port is omitted and server is not started with superuser privileges, an error is ??.
+	- Specifies port to bind the server to. If port is omitted and server is started with superuser privileges, server is bind to port 69 (as defined in `/etc/services`). If port is omitted and server is not started with superuser privileges, an error is thrown.
 - `t`
   - Specifies timeout value in seconds between every packet retransmition (this happens in case when the last packet was not acknowledged). Default value is 3.
 - `directory`
