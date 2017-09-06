@@ -51,8 +51,8 @@ print_usage(char *program)
 }
 
 /**
- * Returns privileged port for tftp protocol if this process is privileged,
- * and non-privileged port if this process is not privileged.
+ * Return the port specified in options or standard TFTP port if this process
+ * is ran with superuser privileges.
  */
 void
 resolve_service_by_privileges(char *service)
@@ -78,7 +78,7 @@ resolve_service_by_privileges(char *service)
 }
 
 /**
- * Generates random port.
+ * Generates random non-privileged port.
  */
 void
 random_service(char *service)
@@ -94,7 +94,7 @@ random_service(char *service)
  * Converts header to buffer and sends it to the client.
  */
 void
-send_hdr(tftp_header_t *hdr)
+send_hdr(const tftp_header_t *hdr)
 {
 	size_t buf_len = header_len(hdr);
 	uint8_t buf[buf_len];

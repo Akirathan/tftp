@@ -90,7 +90,7 @@ str_from_mode(char *str, const tftp_mode_t mode)
  * Calculates length of the tftp_header_t.
  */
 size_t
-header_len(tftp_header_t *hdr)
+header_len(const tftp_header_t *hdr)
 {
 	char str[MODENAME_LEN];
 	/* Initiate size with opcode size. */
