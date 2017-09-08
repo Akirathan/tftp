@@ -8,7 +8,7 @@
 #include "server.h"
 
 static char *dirpath;
-static char filepath[FILEPATH_LEN];
+static char filepath[MAXPATHLEN];
 static tftp_mode_t mode;
 static int client_sock;
 static struct sockaddr client_addr;

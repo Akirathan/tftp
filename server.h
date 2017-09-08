@@ -8,8 +8,6 @@
 #ifndef SERVER_H_
 #define SERVER_H_
 
-#define FILEPATH_LEN		50 // TODO
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,6 +17,7 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/param.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
