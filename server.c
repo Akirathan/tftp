@@ -34,7 +34,7 @@ static void process_opts(int argc, char **argv);
 static void
 usage(char *program)
 {
-	fprintf(stderr, "Usage: %s [-p port] [-t timeout] directory", program);
+	fprintf(stderr, "Usage: %s [-p port] [-t timeout] directory\n", program);
 	exit(1);
 }
 
@@ -60,7 +60,7 @@ resolve_service_by_privileges(char *service)
 	}
 	/* Error. */
 	else {
-		fprintf(stderr, "No port specified and not enough privileges.");
+		fprintf(stderr, "No port specified and not enough privileges.\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -166,12 +166,12 @@ unexpected_hdr(tftp_header_t *hdr)
 	}
 	else if (hdr->opcode == OPCODE_ERR) {
 		/* Print error header. */
-		fprintf(stderr, "Received error packet, code: %d, message: %s",
+		fprintf(stderr, "Received error packet, code: %d, message: %s\n",
 				hdr->error_code, hdr->error_msg);
 	}
 	else {
 		/* Unexpected header opcode. */
-		fprintf(stderr, "Received header with unexpected opcode.");
+		fprintf(stderr, "Received header with unexpected opcode.\n");
 	}
 }
 
