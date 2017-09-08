@@ -10,7 +10,7 @@
 static char filename[FILENAME_LEN];
 static char packet_errmsg[ERRMSG_LEN];
 static char hdr_errmsg[ERRMSG_LEN];
-static uint8_t buf[DATA_LEN];
+static uint8_t data_buf[DATA_LEN];
 
 static const char *const err_msgs[] = {
 		"Undefined",
@@ -160,8 +160,8 @@ read_packet(tftp_header_t *hdr, uint8_t *packet, size_t packet_len)
 		hdr->data_len = packet_len - 4;
 
 		/* Copy data from packet into local buffer */
-		memcpy(buf, packet_idx, hdr->data_len);
-		hdr->data_data = buf;
+		memcpy(data_buf, packet_idx, hdr->data_len);
+		hdr->data_data = data_buf;
 
 		break;
 
