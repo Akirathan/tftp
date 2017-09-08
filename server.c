@@ -129,22 +129,24 @@ receive_hdr(tftp_header_t *hdr)
 
 /**
  * Concatenates directory path with filename.
+ * Returns NULL if concatenated path exceeds maximum filepath length.
  */
 static char *
 concat_paths(const char *dirpath, const char *fname)
 {
 	size_t size;
 
-	size = strlen(dirpath) + strlen(fname);
+	if ((size = strlen(dirpath) + strlen(fname) + 1) > MAXPATHLEN)
+		return NULL;
 
 	/* Build the string */
 	bzero(filepath, size);
-	strcat(filepath, dirpath);
+	strncat(filepath, dirpath, MAXPATHLEN);
 	/* Add trailing / to directory path if necessary. */
 	if (dirpath[strlen(dirpath)-1] != '/') {
 		strcat(filepath, "/");
 	}
-	strcat(filepath, fname);
+	strncat(filepath, fname, MAXPATHLEN);
 
 	return filepath;
 }
@@ -189,8 +191,10 @@ write_file(const char *fname)
 	uint16_t blocknum = 1, errcode;
 	int last_packet = 0;
 
+	if ((fpath = concat_paths(dirpath, fname)) == NULL) {
+		// TODO fill_error_hdr with code = UNDEF and msg = "filepath too long"
+	}
 	/* Open file for writing. */
-	fpath = concat_paths(dirpath, fname);
 	if ((file = fopen(fpath, "a")) == NULL) {
 		/* Error: File not found. */
 		/*if (errno == ENOENT) {
@@ -270,8 +274,11 @@ read_file(const char *filename)
 	size_t bufsize;
 	char *fpath;
 
+	if ((fpath = concat_paths(dirpath, filename)) == NULL) {
+		/* Error: File not found. */
+		fill_error_hdr(&hdr, ENFOUND);
+	}
 	/* Open file for reading. */
-	fpath = concat_paths(dirpath, filename);
 	if ((file = fopen(fpath, "r")) == NULL) {
 		/* Error: File not found. */
 		if (errno == ENOENT) {
