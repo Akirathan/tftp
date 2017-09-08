@@ -51,10 +51,10 @@ mode_from_str(const char *str)
 
 	to_lower_str(lower_str, str);
 
-	if (strcmp(lower_str, "netascii") == 0) {
+	if (strcmp(lower_str, NETASCII_STR) == 0) {
 		return MODE_NETASCII;
 	}
-	else if (strcmp(lower_str, "octet") == 0) {
+	else if (strcmp(lower_str, OCTET_STR) == 0) {
 		return MODE_OCTET;
 	}
 	else {
@@ -70,10 +70,10 @@ str_from_mode(char *str, const tftp_mode_t mode)
 {
 	switch (mode) {
 	case MODE_NETASCII:
-		strcpy(str, "netascii");
+		strcpy(str, NETASCII_STR);
 		break;
 	case MODE_OCTET:
-		strcpy(str, "octet");
+		strcpy(str, OCTET_STR);
 		break;
 	default:
 		break;

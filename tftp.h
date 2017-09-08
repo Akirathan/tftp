@@ -25,6 +25,8 @@
 #define PORT_LEN			6
 #define DATA_LEN			512
 #define PACKET_LEN			DATA_LEN + 4
+#define NETASCII_STR		"netascii"
+#define OCTET_STR			"octet"
 
 /* Error defines. */
 #define EUNDEF				0 /* Undefined */
