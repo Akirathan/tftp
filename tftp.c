@@ -7,11 +7,11 @@
 
 #include "tftp.h"
 
-char filename[FILENAME_LEN];
-char errmsg[ERRMSG_LEN];
-uint8_t buf[DATA_LEN];
+static char filename[FILENAME_LEN];
+static char errmsg[ERRMSG_LEN];
+static uint8_t buf[DATA_LEN];
 
-const char *const err_msgs[] = {
+static const char *const err_msgs[] = {
 		"Undefined",
 		"File not found",
 		"Access violation",
