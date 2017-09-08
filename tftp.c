@@ -47,7 +47,7 @@ to_lower_str(char *dest, const char *src)
 static tftp_mode_t
 mode_from_str(const char *str)
 {
-	char lower_str[strlen(str)];
+	char lower_str[strlen(str) + 1];
 
 	to_lower_str(lower_str, str);
 
