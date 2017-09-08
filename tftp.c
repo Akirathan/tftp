@@ -32,16 +32,13 @@ static void to_lower_str(char *dest, const char *src);
 static void
 to_lower_str(char *dest, const char *src)
 {
-	const char *src_idx = src;
-	char *dest_idx = dest;
-
-	while (*src_idx != '\0') {
-		*dest_idx = (char) tolower((int) *src_idx);
-		dest_idx++;
-		src_idx++;
+	while (*src != '\0') {
+		*dest = tolower((int) *src);
+		src++;
+		dest++;
 	}
 
-	*dest_idx = '\0';
+	*dest = '\0';
 }
 
 /**
