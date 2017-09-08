@@ -16,8 +16,9 @@ $(SERVER_BIN):	$(OBJ)
 	$(CC) $(LDFLAGS) $^ -o $@
 
 $(OBJ_DIR)/%.o: %.c
+	@ mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $^ -o $@
 
 .PHONY:	clean
 clean:
-	rm -rf $(SERVER_BIN) $(OBJ)
+	rm -rf $(SERVER_BIN) $(OBJ_DIR)
