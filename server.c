@@ -116,7 +116,7 @@ receive_hdr(tftp_header_t *hdr)
 	for (size_t i = 0; i < 14; ++i) {
 		if (old_client_addrdata[i] != client_addr.sa_data[i]) {
 			/* Error: Unknown client's TID. */
-			fill_error_hdr(&errorhdr, ETID);
+			fill_error_hdr(&errorhdr, ETID, NULL);
 			send_hdr(&errorhdr);
 			return 0;
 		}
@@ -163,7 +163,7 @@ unexpected_hdr(tftp_header_t *hdr)
 	/* Check unknown opcode. */
 	if (OPCODE_RRQ <= hdr->opcode && hdr->opcode <= OPCODE_ERR) {
 		/* Send error header: Illegal TFTP operation. */
-		fill_error_hdr(&errorhdr, EOP);
+		fill_error_hdr(&errorhdr, EOP, NULL);
 		send_hdr(&errorhdr);
 	}
 	else if (hdr->opcode == OPCODE_ERR) {
@@ -192,7 +192,8 @@ write_file(const char *fname)
 	int last_packet = 0;
 
 	if ((fpath = concat_paths(dirpath, fname)) == NULL) {
-		// TODO fill_error_hdr with code = UNDEF and msg = "filepath too long"
+		/* Error: Filepath too long. */
+		fill_error_hdr(&hdr, EUNDEF, "Filepath too long.");
 	}
 	/* Open file for writing. */
 	if ((file = fopen(fpath, "a")) == NULL) {
@@ -208,7 +209,7 @@ write_file(const char *fname)
 		else if (errno == EACCES) {
 			errcode = EACCESS;
 		}
-		fill_error_hdr(&hdr, errcode);
+		fill_error_hdr(&hdr, errcode, NULL);
 		send_hdr(&hdr);
 		return;
 	}
@@ -276,7 +277,7 @@ read_file(const char *filename)
 
 	if ((fpath = concat_paths(dirpath, filename)) == NULL) {
 		/* Error: File not found. */
-		fill_error_hdr(&hdr, ENFOUND);
+		fill_error_hdr(&hdr, ENFOUND, NULL);
 	}
 	/* Open file for reading. */
 	if ((file = fopen(fpath, "r")) == NULL) {
@@ -292,7 +293,7 @@ read_file(const char *filename)
 		else if (errno == EACCES) {
 			errcode = EACCESS;
 		}
-		fill_error_hdr(&hdr, errcode);
+		fill_error_hdr(&hdr, errcode, NULL);
 		send_hdr(&hdr);
 		return;
 	}

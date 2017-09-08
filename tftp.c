@@ -8,7 +8,8 @@
 #include "tftp.h"
 
 static char filename[FILENAME_LEN];
-static char errmsg[ERRMSG_LEN];
+static char packet_errmsg[ERRMSG_LEN];
+static char hdr_errmsg[ERRMSG_LEN];
 static uint8_t buf[DATA_LEN];
 
 static const char *const err_msgs[] = {
@@ -177,8 +178,8 @@ read_packet(tftp_header_t *hdr, uint8_t *packet, size_t packet_len)
 		packet_idx += 2;
 
 		/* Error message */
-		strncpy(errmsg, (char *) packet_idx, ERRMSG_LEN);
-		hdr->error_msg = errmsg;
+		strncpy(packet_errmsg, (char *) packet_idx, ERRMSG_LEN);
+		hdr->error_msg = packet_errmsg;
 	}
 }
 
@@ -248,12 +249,19 @@ copy_to_buffer(uint8_t *buf, const tftp_header_t *hdr)
 }
 
 /**
- * Fills in hdr struct with error opcode and corresponding message.
+ * Fills in hdr struct with error opcode and corresponding message. If
+ * errcode is EUNDEF then errmsg must not be NULL.
  */
 void
-fill_error_hdr(tftp_header_t *hdr, uint16_t errcode)
+fill_error_hdr(tftp_header_t *hdr, uint16_t errcode, const char *errmsg)
 {
 	hdr->opcode = OPCODE_ERR;
-	hdr->error_code = errcode;
-	hdr->error_msg = err_msgs[errcode];
+	if ((hdr->error_code = errcode) == EUNDEF) {
+		/* Copy parameter to global variable. */
+		strncpy(hdr_errmsg, errmsg, ERRMSG_LEN);
+		hdr->error_msg = hdr_errmsg;
+	}
+	else {
+		hdr->error_msg = err_msgs[errcode];
+	}
 }
