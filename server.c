@@ -373,9 +373,19 @@ rebind(const char *service)
 	freeaddrinfo(res);
 }
 
+/**
+ * Parameter for process_connection function.
+ */
+typedef struct {
+	uint8_t buff[DATA_LEN];
+	size_t buff_len;
+	struct sockaddr client_addr;
+	socklen_t client_addr_len;
+} parameter_t;
 
 /**
  * Processes one client connection.
+ * p is parameter_t from recvfrom function.
  */
 static void *
 process_connection(void *p)
@@ -383,19 +393,18 @@ process_connection(void *p)
 	int first_received = 1;
 	int n = *((int *) p);
 	char service[PORT_LEN];
-	uint8_t buff[DATA_LEN];
 	tftp_header_t hdr;
+	parameter_t par = *((parameter_t *) p);
 
 	/* Rebind client_sock to random port if necessary. */
 	if (first_received) {
-		close(client_sock);
 		random_service(service);
 		rebind(service);
 		first_received = 0;
 	}
 
 	/* Deserialize buffer into hdr. */
-	read_packet(&hdr, buff, n);
+	read_packet(&hdr, par.buff, par.buff_len);
 
 	switch (hdr.opcode) {
 	case OPCODE_RRQ:
@@ -426,17 +435,24 @@ generic_server()
 	int n;
 	uint8_t buff[DATA_LEN];
 	char service[PORT_LEN];
+	struct sockaddr clientaddr;
+	socklen_t clientaddrlen = sizeof(clientaddr);
 
 	/* Initial binding. */
 	resolve_service_by_privileges(service);
 	rebind(service);
 
 	/* Receive socket from client. */
-	while ((n = recvfrom(client_sock, buff, DATA_LEN, 0, &client_addr,
-			&client_addr_len)) != 0) {
+	while ((n = recvfrom(client_sock, buff, DATA_LEN, 0, &clientaddr,
+			&clientaddrlen)) != 0) {
+		parameter_t par;
 
-		new_thread(process_connection, (void *) &n);
+		/* Fill parameter_t struct. */
+		memcpy(par.buff, buff, DATA_LEN);
+		par.client_addr = clientaddr;
+		par.client_addr_len = clientaddrlen;
 
+		new_thread(process_connection, (void *) &par);
 	}
 }
 
