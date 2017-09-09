@@ -1,5 +1,5 @@
 ## Overview
-TFTP server implementation conforming to [RFC 1350](https://tools.ietf.org/html/rfc1350).
+TFTP server implementation conforming to [RFC 1350](https://tools.ietf.org/html/rfc1350), supporting parallel client connection.
 
 ## Build
 To build the server simply run `make`, this will create `tftp_server` binary in current folder.
@@ -17,10 +17,9 @@ To build the server simply run `make`, this will create `tftp_server` binary in 
 ## Implementation
 First options are processed and alarm signal handler is set.
 Then control is passed to `generic_server` function that listens on initial port (69 or the one specified in options).
-After the first packet from client is received, random non-privileged port (TID) is chosen for the rest of the connection.
+After the first packet from client is received, new thread is inserted into `thread_pool` via `new_thread` function and this thread manages rest of the connection.
+Note that in `thread_pool.h` number of concurrently running threads can be configured with `THREAD_NUM` define.
 Depending whether client uploads or downloads file, control is passed to `write_file` or `read_file` function respectively.
-Those functions handle rest of the connection.
-After control returns from one of those functions, server is set to listen on initial port again (this is done in `rebind` function).
 
 
 ### Handled errors

@@ -8,13 +8,16 @@
 
 #include "thread_pool.h"
 
-/**
- * This struct is usefull when allocating memory and copying parameters for
- * thread is in place.
- */
 static struct {
 	pthread_t thread;
 	int active;
+	/*
+	 * Dynamicaly allocated buffer for parameters passed to the thread.
+	 * Note that it is important to copy parameters into this buffer,
+	 * otherwise pointer to "volatile" value would be passed to the
+	 * thread routine (value would be modified in generic_server function
+	 * in server.c).
+	 */
 	void *par_buf;
 	size_t par_len;
 } threads[THREAD_NUM];
@@ -40,7 +43,7 @@ new_thread(void * (* fnc) (void *), void *arg, size_t arg_len)
 	if (threads[curr_idx].active)
 		remove_curr_thread();
 
-	/* Allocate memory for arguments. */
+	/* Allocate memory for arguments and copy them into threads struct. */
 	p = malloc(arg_len);
 	memcpy(p, arg, arg_len);
 	threads[curr_idx].par_buf = p;
@@ -63,7 +66,7 @@ init_pool()
 }
 
 /**
- * Removes current thread and dealocates its parameters.
+ * Removes current thread and dealocates its parameter buffer.
  */
 static void
 remove_curr_thread()

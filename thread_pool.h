@@ -13,6 +13,7 @@
 #ifndef THREAD_POOL_H_
 #define THREAD_POOL_H_
 
+/* Number of concurrently running threads. */
 #define THREAD_NUM		10
 
 #include <pthread.h>
