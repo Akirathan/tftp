@@ -7,10 +7,10 @@
 
 #include "file_op.h"
 
-static char prev_char;
+static __thread char prev_char;
 /* There is a pending char from previous reading or last char from writing
  * buffer is \r */
-static int from_prev = 0;
+static __thread int from_prev = 0;
 
 static void write_char(const char c, FILE *file);
 static int convert(const char c1, const char c2, char *c);

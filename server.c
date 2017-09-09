@@ -8,12 +8,12 @@
 #include "server.h"
 
 static char *dirpath;
-static char filepath[MAXPATHLEN];
-static tftp_mode_t mode;
-static int client_sock;
-static struct sockaddr client_addr;
+static __thread char filepath[MAXPATHLEN];
+static __thread tftp_mode_t mode;
+static __thread int client_sock;
+static __thread struct sockaddr client_addr;
 static socklen_t client_addr_len = sizeof(client_addr);
-static jmp_buf timeoutbuf;
+static jmp_buf timeoutbuf; // TODO __thread?
 static unsigned int timeout = 3;
 static char port[PORT_LEN] = "0";
 
@@ -426,7 +426,6 @@ generic_server()
 	int n;
 	uint8_t buff[DATA_LEN];
 	char service[PORT_LEN];
-	tftp_header_t hdr;
 
 	/* Initial binding. */
 	resolve_service_by_privileges(service);

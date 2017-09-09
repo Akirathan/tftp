@@ -7,10 +7,10 @@
 
 #include "tftp.h"
 
-static char filename[FILENAME_LEN];
-static char packet_errmsg[ERRMSG_LEN];
-static char hdr_errmsg[ERRMSG_LEN];
-static uint8_t data_buf[DATA_LEN];
+static __thread char filename[FILENAME_LEN];
+static __thread char packet_errmsg[ERRMSG_LEN];
+static __thread char hdr_errmsg[ERRMSG_LEN];
+static __thread uint8_t data_buf[DATA_LEN];
 
 static const char *const err_msgs[] = {
 		"Undefined",
