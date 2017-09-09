@@ -391,7 +391,6 @@ static void *
 process_connection(void *p)
 {
 	int first_received = 1;
-	int n = *((int *) p);
 	char service[PORT_LEN];
 	tftp_header_t hdr;
 	parameter_t par = *((parameter_t *) p);
@@ -452,7 +451,7 @@ generic_server()
 		par.client_addr = clientaddr;
 		par.client_addr_len = clientaddrlen;
 
-		new_thread(process_connection, (void *) &par);
+		new_thread(process_connection, (void *) &par, sizeof(par));
 	}
 }
 

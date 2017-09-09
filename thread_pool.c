@@ -8,10 +8,19 @@
 
 #include "thread_pool.h"
 
-static pthread_t threads[THREAD_NUM];
-static int active_threads[THREAD_NUM];
+/**
+ * This struct is usefull when allocating memory and copying parameters for
+ * thread is in place.
+ */
+static struct {
+	pthread_t thread;
+	int active;
+	void *par_buf;
+	size_t par_len;
+} threads[THREAD_NUM];
+
 /* Current thread index. */
-static size_t thread_idx = 0;
+static size_t curr_idx = 0;
 
 static void remove_curr_thread();
 
@@ -19,38 +28,52 @@ static void remove_curr_thread();
  * init_pool must be called before this function.
  */
 void
-new_thread(void * (* fnc) (void *), void *arg)
+new_thread(void * (* fnc) (void *), void *arg, size_t arg_len)
 {
-	/* Check whether pool is full. */
-	if (thread_idx == THREAD_NUM)
-		thread_idx = 0;
+	void *p;
 
-	if (active_threads[thread_idx])
+	/* Check whether pool is full. */
+	if (curr_idx == THREAD_NUM)
+		curr_idx = 0;
+
+	/* If current thread is active, join it. */
+	if (threads[curr_idx].active)
 		remove_curr_thread();
 
-	pthread_create(&threads[thread_idx], NULL, fnc, arg);
-	active_threads[thread_idx] = 1;
-	thread_idx++;
+	/* Allocate memory for arguments. */
+	p = malloc(arg_len);
+	memcpy(p, arg, arg_len);
+	threads[curr_idx].par_buf = p;
+	threads[curr_idx].par_len = arg_len;
+
+	/* Start thread. */
+	pthread_create(&threads[curr_idx].thread, NULL, fnc, arg);
+	threads[curr_idx].active = 1;
+
+	curr_idx++;
 }
 
 void
 init_pool()
 {
 	for (size_t i = 0; i < THREAD_NUM; ++i) {
-		active_threads[i] = 0;
+		threads[i].active = 0;
+		threads[i].par_len = 0;
 	}
 }
 
 /**
- * Removes next thread.
+ * Removes current thread and dealocates its parameters.
  */
 static void
 remove_curr_thread()
 {
-	if (!active_threads[thread_idx])
+	if (!threads[curr_idx].active)
 		return;
 
-	pthread_join(threads[thread_idx], NULL);
-	active_threads[thread_idx] = 0;
+	pthread_join(threads[curr_idx].thread, NULL);
+	free(threads[curr_idx].par_buf);
+	threads[curr_idx].par_len = 0;
+	threads[curr_idx].active = 0;
 }
 

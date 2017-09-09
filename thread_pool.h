@@ -16,8 +16,10 @@
 #define THREAD_NUM		10
 
 #include <pthread.h>
+#include <string.h>
+#include <stdlib.h>
 
-void new_thread(void * (* fnc) (void *), void *arg);
+void new_thread(void * (* fnc) (void *), void *arg, size_t arg_len);
 void init_pool();
 
 #endif /* THREAD_POOL_H_ */
