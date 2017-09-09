@@ -47,7 +47,7 @@ new_thread(void * (* fnc) (void *), void *arg, size_t arg_len)
 	threads[curr_idx].par_len = arg_len;
 
 	/* Start thread. */
-	pthread_create(&threads[curr_idx].thread, NULL, fnc, arg);
+	pthread_create(&threads[curr_idx].thread, NULL, fnc, threads[curr_idx].par_buf);
 	threads[curr_idx].active = 1;
 
 	curr_idx++;
