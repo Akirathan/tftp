@@ -390,17 +390,13 @@ typedef struct {
 static void *
 process_connection(void *p)
 {
-	int first_received = 1;
 	char service[PORT_LEN];
 	tftp_header_t hdr;
 	parameter_t par = *((parameter_t *) p);
 
-	/* Rebind client_sock to random port if necessary. */
-	if (first_received) {
-		random_service(service);
-		rebind(service);
-		first_received = 0;
-	}
+	/* Rebind client_sock to random port. */
+	random_service(service);
+	rebind(service);
 
 	/* Copy client_addr and client_addr_len from parameter. */
 	client_addr = par.client_addr;
