@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <strings.h>
 #include <string.h>
+#include <pthread.h>
 #include <err.h>
 #include <errno.h>
 #include <sys/socket.h>
@@ -26,5 +27,6 @@
 #include <signal.h>
 #include "tftp.h"
 #include "file_op.h"
+#include "thread_pool.h"
 
 #endif /* SERVER_H_ */

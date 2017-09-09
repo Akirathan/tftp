@@ -53,7 +53,7 @@ resolve_service_by_privileges(char *service)
 		return;
 	}
 	/* Root privileges. */
-	else if (getuid() == 0) {
+	else if (geteuid() == 0) {
 		if ((ent = getservbyname("tftp", "udp")) == NULL)
 			err(EXIT_FAILURE, "getservbyname");
 		snprintf(service, PORT_LEN, "%d", ntohs(ent->s_port));
@@ -373,6 +373,49 @@ rebind(const char *service)
 	freeaddrinfo(res);
 }
 
+
+/**
+ * Processes one client connection.
+ */
+static void *
+process_connection(void *p)
+{
+	int first_received = 1;
+	int n = *((int *) p);
+	char service[PORT_LEN];
+	uint8_t buff[DATA_LEN];
+	tftp_header_t hdr;
+
+	/* Rebind client_sock to random port if necessary. */
+	if (first_received) {
+		close(client_sock);
+		random_service(service);
+		rebind(service);
+		first_received = 0;
+	}
+
+	/* Deserialize buffer into hdr. */
+	read_packet(&hdr, buff, n);
+
+	switch (hdr.opcode) {
+	case OPCODE_RRQ:
+		mode = hdr.req_mode;
+		read_file(hdr.req_filename);
+		break;
+
+	case OPCODE_WRQ:
+		mode = hdr.req_mode;
+		write_file(hdr.req_filename);
+		break;
+
+	default:
+		/* Client should not initiate communication with other opcodes. */
+		break;
+	}
+
+	return NULL;
+}
+
 /**
  * Creates generic server that binds either to IPv4 or IPv6, depending on which
  * version is supported on current platform.
@@ -380,7 +423,7 @@ rebind(const char *service)
 static void
 generic_server()
 {
-	int n, first_received = 1;
+	int n;
 	uint8_t buff[DATA_LEN];
 	char service[PORT_LEN];
 	tftp_header_t hdr;
@@ -393,41 +436,8 @@ generic_server()
 	while ((n = recvfrom(client_sock, buff, DATA_LEN, 0, &client_addr,
 			&client_addr_len)) != 0) {
 
-		/* Rebind client_sock to random port if necessary. */
-		if (first_received) {
-			close(client_sock);
-			random_service(service);
-			rebind(service);
-			first_received = 0;
-		}
+		new_thread(process_connection, (void *) &n);
 
-		/* Check for an error. */
-		if (n == -1)
-			err(EXIT_FAILURE, "recvfrom");
-
-		/* Deserialize buffer into hdr. */
-		read_packet(&hdr, buff, n);
-
-		switch (hdr.opcode) {
-		case OPCODE_RRQ:
-			mode = hdr.req_mode;
-			read_file(hdr.req_filename);
-			break;
-
-		case OPCODE_WRQ:
-			mode = hdr.req_mode;
-			write_file(hdr.req_filename);
-			break;
-
-		default:
-			/* Client should not initiate communication with other opcodes. */
-			break;
-		}
-
-		/* Prepare for new connection - rebind to default service (port). */
-		resolve_service_by_privileges(service);
-		rebind(service);
-		first_received = 1;
 	}
 }
 
@@ -468,6 +478,9 @@ main(int argc, char **argv)
 	action.sa_flags = 0;
 	if (sigaction(SIGALRM, &action, NULL) < 0)
 		err(EXIT_FAILURE, "sigaction");
+
+	/* Initialize thread pool. */
+	init_pool();
 
 	generic_server();
 }

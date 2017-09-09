@@ -3,55 +3,54 @@
  *
  *  Created on: Sep 9, 2017
  *      Author: mayfa
+ *
  */
 
-#define THREAD_NUM		10
-
-#include <pthread.h>
-
-/*************************************/
+#include "thread_pool.h"
 
 static pthread_t threads[THREAD_NUM];
 static int active_threads[THREAD_NUM];
-static int initialized = 0;
+/* Current thread index. */
+static size_t thread_idx = 0;
 
-static void init();
-
-/**
- * Returns 1 if new thread cannot be allocated, returns 0 on success.
- */
-int
-new_thread(void * (* fnc) (void *), void *arg)
-{
-	/* Find first empty thread slot. */
-	size_t i = 0;
-	while (active_threads[i] == 1 && i < THREAD_NUM) {
-		i++;
-	}
-
-	if (i == THREAD_NUM)
-		return 1;
-
-}
+static void remove_curr_thread();
 
 /**
- * Cleans the pool: removes exitted threads.
+ * init_pool must be called before this function.
  */
 void
-try_join()
+new_thread(void * (* fnc) (void *), void *arg)
 {
-	for (size_t i = 0; i < THREAD_NUM; ++i) {
+	/* Check whether pool is full. */
+	if (thread_idx == THREAD_NUM)
+		thread_idx = 0;
 
-	}
+	if (active_threads[thread_idx])
+		remove_curr_thread();
+
+	pthread_create(&threads[thread_idx], NULL, fnc, arg);
+	active_threads[thread_idx] = 1;
+	thread_idx++;
 }
 
-static void
-init()
+void
+init_pool()
 {
-	if (initialized)
-		return;
-
 	for (size_t i = 0; i < THREAD_NUM; ++i) {
 		active_threads[i] = 0;
 	}
 }
+
+/**
+ * Removes next thread.
+ */
+static void
+remove_curr_thread()
+{
+	if (!active_threads[thread_idx])
+		return;
+
+	pthread_join(threads[thread_idx], NULL);
+	active_threads[thread_idx] = 0;
+}
+
