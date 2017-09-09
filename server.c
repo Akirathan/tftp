@@ -402,6 +402,10 @@ process_connection(void *p)
 		first_received = 0;
 	}
 
+	/* Copy client_addr and client_addr_len from parameter. */
+	client_addr = par.client_addr;
+	client_addr_len = par.client_addr_len;
+
 	/* Deserialize buffer into hdr. */
 	read_packet(&hdr, par.buff, par.buff_len);
 
@@ -448,6 +452,7 @@ generic_server()
 
 		/* Fill parameter_t struct. */
 		memcpy(par.buff, buff, DATA_LEN);
+		par.buff_len = n;
 		par.client_addr = clientaddr;
 		par.client_addr_len = clientaddrlen;
 
