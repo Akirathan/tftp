@@ -13,9 +13,10 @@ static __thread tftp_mode_t mode;
 static __thread int client_sock;
 static __thread struct sockaddr client_addr;
 static socklen_t client_addr_len = sizeof(client_addr);
-static jmp_buf timeoutbuf; // TODO __thread?
 static unsigned int timeout = 3;
 static char port[PORT_LEN] = "0";
+/* Local connection errno. */
+static int conn_err = ETFTP_UNDEF;
 
 static void usage(char *program);
 static void resolve_service_by_privileges(char *service);
@@ -92,7 +93,8 @@ send_hdr(const tftp_header_t *hdr)
 
 /**
  * Receives packet from client and fills in the hdr structure from this packet.
- * When unknown TID error occurs, sends error packet and returns 0.
+ * When unknow TID error occurs, returns 0.
+ * When timeout error occurs, returns 0 and sets conn_err.
  */
 static int
 receive_hdr(tftp_header_t *hdr)
@@ -101,10 +103,21 @@ receive_hdr(tftp_header_t *hdr)
 	uint8_t buf[PACKET_LEN];
 	char old_client_addrdata[14];
 	tftp_header_t errorhdr;
+	struct pollfd poll_struct = {client_sock, POLLIN, 0};
+	int ret;
 
 	/* Copy old client's addr data value. */
 	for (size_t i = 0; i < 14; ++i) {
 		old_client_addrdata[i] = client_addr.sa_data[i];
+	}
+
+	if ((ret = poll(&poll_struct, 1, timeout * 1000)) == -1)
+		err(EXIT_FAILURE, "poll");
+
+	if (ret == 0) {
+		/* Timeout. */
+		conn_err = ETFTP_TIMEOUT;
+		return 0;
 	}
 
 	/* Receive packet. */
@@ -116,8 +129,7 @@ receive_hdr(tftp_header_t *hdr)
 	for (size_t i = 0; i < 14; ++i) {
 		if (old_client_addrdata[i] != client_addr.sa_data[i]) {
 			/* Error: Unknown client's TID. */
-			fill_error_hdr(&errorhdr, ETFTP_TID, NULL);
-			send_hdr(&errorhdr);
+			conn_err = ETFTP_TID;
 			return 0;
 		}
 	}
@@ -220,12 +232,17 @@ write_file(const char *fname)
 	send_hdr(&hdr);
 
 	for (;;) {
-		alarm(timeout);
 		if (!receive_hdr(&hdr)) {
-			alarm(0);
-			break;
+			if (conn_err == ETFTP_TID) {
+				fill_error_hdr(&hdr, ETFTP_TID, NULL);
+				send_hdr(&hdr);
+				break;
+			}
+			else if (conn_err == ETFTP_TIMEOUT) {
+				/* Resend ACK. */
+				goto ack;
+			}
 		}
-		alarm(0);
 
 		if (hdr.opcode == OPCODE_DATA) {
 			/* Check if last data packet was received. */
@@ -238,12 +255,12 @@ write_file(const char *fname)
 				hdr.opcode = OPCODE_ACK;
 				hdr.ack_blocknum = blocknum;
 				blocknum++;
-				setjmp(timeoutbuf);
+			ack:
 				send_hdr(&hdr);
 			}
 			else {
 				/* Received data with unexpected block number - resend ACK. */
-				longjmp(timeoutbuf, 1);
+				goto ack;
 			}
 
 			/* Write data to file. */
