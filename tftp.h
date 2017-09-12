@@ -38,6 +38,9 @@
 #define ETFTP_FEXIST			6 /* File already exists */
 #define ETFTP_USER				7 /* No such user */
 
+/* "Local" error defines. */
+#define ETFTP_TIMEOUT			40
+
 typedef enum {
 	OPCODE_RRQ = 1,
 	OPCODE_WRQ = 2,
