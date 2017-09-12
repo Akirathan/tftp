@@ -27,7 +27,6 @@ static char* concat_paths(const char *dirpath, const char *fname);
 static void unexpected_hdr(tftp_header_t *hdr);
 static void write_file(const char *fname);
 static void read_file(const char *fname);
-static void timeout_handler(int signum);
 static int rebind(const char *service);
 static void generic_server();
 static void process_opts(int argc, char **argv);
@@ -102,7 +101,6 @@ receive_hdr(tftp_header_t *hdr)
 	int n = 0;
 	uint8_t buf[PACKET_LEN];
 	char old_client_addrdata[14];
-	tftp_header_t errorhdr;
 	struct pollfd poll_struct = {client_sock, POLLIN, 0};
 	int ret;
 
@@ -198,10 +196,12 @@ static void
 write_file(const char *fname)
 {
 	tftp_header_t hdr;
+	tftp_header_t ack_hdr;
 	FILE *file;
 	char *fpath;
-	uint16_t blocknum = 1, errcode;
+	uint16_t blocknum = 0, errcode;
 	int last_packet = 0;
+	int resend_ack = 0;
 
 	if ((fpath = concat_paths(dirpath, fname)) == NULL) {
 		/* Error: Filepath too long. */
@@ -209,10 +209,6 @@ write_file(const char *fname)
 	}
 	/* Open file for writing. */
 	if ((file = fopen(fpath, "a")) == NULL) {
-		/* Error: File not found. */
-		/*if (errno == ENOENT) {
-			hdr.error_code = ENFOUND;
-		}*/
 		/* Error: Disk full. */
 		if (errno == EDQUOT) {
 			errcode = ETFTP_ALLOC;
@@ -226,12 +222,11 @@ write_file(const char *fname)
 		return;
 	}
 
-	/* Send first ACK. */
-	hdr.opcode = OPCODE_ACK;
-	hdr.ack_blocknum = 0;
-	send_hdr(&hdr);
-
 	for (;;) {
+		ack_hdr.opcode = OPCODE_ACK;
+		ack_hdr.ack_blocknum = blocknum;
+		send_hdr(&ack_hdr);
+
 		if (!receive_hdr(&hdr)) {
 			if (conn_err == ETFTP_TID) {
 				fill_error_hdr(&hdr, ETFTP_TID, NULL);
@@ -240,9 +235,16 @@ write_file(const char *fname)
 			}
 			else if (conn_err == ETFTP_TIMEOUT) {
 				/* Resend ACK. */
-				goto ack;
+				resend_ack = 1;
+				continue;
 			}
 		}
+		else {
+			resend_ack = 0;
+		}
+
+		if (!resend_ack)
+			blocknum++;
 
 		if (hdr.opcode == OPCODE_DATA) {
 			/* Check if last data packet was received. */
@@ -250,23 +252,19 @@ write_file(const char *fname)
 				last_packet = 1;
 			}
 
-			/* Send ACK for corresponding block number. */
-			if (hdr.data_blocknum == blocknum) {
-				hdr.opcode = OPCODE_ACK;
-				hdr.ack_blocknum = blocknum;
-				blocknum++;
-			ack:
-				send_hdr(&hdr);
-			}
-			else {
+			if (hdr.data_blocknum != blocknum) {
 				/* Received data with unexpected block number - resend ACK. */
-				goto ack;
+				resend_ack = 1;
+				continue;
 			}
 
 			/* Write data to file. */
 			write_file_convert(file, mode, (char *) hdr.data_data, hdr.data_len);
 
 			if (last_packet)
+				/* Send ACK for last packet. */
+				ack_hdr.ack_blocknum = blocknum;
+				send_hdr(&ack_hdr);
 				break;
 		}
 		else {
@@ -318,7 +316,7 @@ read_file(const char *filename)
 	do {
 		read_file_convert(file, mode, (char *) buf, &bufsize, DATA_LEN);
 
-		setjmp(timeoutbuf);
+	send_data:
 		/* Fill and send header. */
 		hdr.opcode = OPCODE_DATA;
 		hdr.data_blocknum = blocknum;
@@ -326,12 +324,17 @@ read_file(const char *filename)
 		hdr.data_len = bufsize;
 		send_hdr(&hdr);
 		/* Wait for ACK. */
-		alarm(timeout);
 		if (!receive_hdr(&hdr)) {
-			alarm(0);
-			break;
+			if (conn_err == ETFTP_TID) {
+				fill_error_hdr(&hdr, ETFTP_TID, NULL);
+				send_hdr(&hdr);
+				break;
+			}
+			else if (conn_err == ETFTP_TIMEOUT) {
+				/* Resend data. */
+				goto send_data;
+			}
 		}
-		alarm(0);
 
 		/* Check if received packet is of ACK type. */
 		if (hdr.opcode == OPCODE_ACK) {
@@ -341,7 +344,7 @@ read_file(const char *filename)
 			}
 			else {
 				/* Error: other blocknum acknowledged - resend data. */
-				longjmp(timeoutbuf, 1);
+				goto send_data;
 			}
 		}
 		else {
@@ -350,12 +353,6 @@ read_file(const char *filename)
 			break;
 		}
 	} while (bufsize == DATA_LEN);
-}
-
-static void
-timeout_handler(int signum)
-{
-	longjmp(timeoutbuf, 1);
 }
 
 /**
@@ -509,16 +506,7 @@ process_opts(int argc, char **argv)
 int
 main(int argc, char **argv)
 {
-	struct sigaction action;
-
 	process_opts(argc, argv);
-
-	/* Set timeout action handler. */
-	action.sa_handler = timeout_handler;
-	sigemptyset(&action.sa_mask);
-	action.sa_flags = 0;
-	if (sigaction(SIGALRM, &action, NULL) < 0)
-		err(EXIT_FAILURE, "sigaction");
 
 	/* Initialize thread pool. */
 	init_pool();

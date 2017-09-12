@@ -24,6 +24,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <setjmp.h>
+#include <poll.h>
 #include <signal.h>
 #include "tftp.h"
 #include "file_op.h"
