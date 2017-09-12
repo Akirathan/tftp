@@ -256,7 +256,7 @@ void
 fill_error_hdr(tftp_header_t *hdr, uint16_t errcode, const char *errmsg)
 {
 	hdr->opcode = OPCODE_ERR;
-	if ((hdr->error_code = errcode) == EUNDEF) {
+	if ((hdr->error_code = errcode) == ETFTP_UNDEF) {
 		/* Copy parameter to global variable. */
 		strncpy(hdr_errmsg, errmsg, ERRMSG_LEN);
 		hdr->error_msg = hdr_errmsg;

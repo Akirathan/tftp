@@ -116,7 +116,7 @@ receive_hdr(tftp_header_t *hdr)
 	for (size_t i = 0; i < 14; ++i) {
 		if (old_client_addrdata[i] != client_addr.sa_data[i]) {
 			/* Error: Unknown client's TID. */
-			fill_error_hdr(&errorhdr, ETID, NULL);
+			fill_error_hdr(&errorhdr, ETFTP_TID, NULL);
 			send_hdr(&errorhdr);
 			return 0;
 		}
@@ -163,7 +163,7 @@ unexpected_hdr(tftp_header_t *hdr)
 	/* Check unknown opcode. */
 	if (OPCODE_RRQ <= hdr->opcode && hdr->opcode <= OPCODE_ERR) {
 		/* Send error header: Illegal TFTP operation. */
-		fill_error_hdr(&errorhdr, EOP, NULL);
+		fill_error_hdr(&errorhdr, ETFTP_OP, NULL);
 		send_hdr(&errorhdr);
 	}
 	else if (hdr->opcode == OPCODE_ERR) {
@@ -193,7 +193,7 @@ write_file(const char *fname)
 
 	if ((fpath = concat_paths(dirpath, fname)) == NULL) {
 		/* Error: Filepath too long. */
-		fill_error_hdr(&hdr, EUNDEF, "Filepath too long.");
+		fill_error_hdr(&hdr, ETFTP_UNDEF, "Filepath too long.");
 	}
 	/* Open file for writing. */
 	if ((file = fopen(fpath, "a")) == NULL) {
@@ -203,11 +203,11 @@ write_file(const char *fname)
 		}*/
 		/* Error: Disk full. */
 		if (errno == EDQUOT) {
-			errcode = EALLOC;
+			errcode = ETFTP_ALLOC;
 		}
 		/* Error: Access violation. */
 		else if (errno == EACCES) {
-			errcode = EACCESS;
+			errcode = ETFTP_ACCESS;
 		}
 		fill_error_hdr(&hdr, errcode, NULL);
 		send_hdr(&hdr);
@@ -277,21 +277,21 @@ read_file(const char *filename)
 
 	if ((fpath = concat_paths(dirpath, filename)) == NULL) {
 		/* Error: File not found. */
-		fill_error_hdr(&hdr, ENFOUND, NULL);
+		fill_error_hdr(&hdr, ETFTP_NFOUND, NULL);
 	}
 	/* Open file for reading. */
 	if ((file = fopen(fpath, "r")) == NULL) {
 		/* Error: File not found. */
 		if (errno == ENOENT) {
-			errcode = ENFOUND;
+			errcode = ETFTP_NFOUND;
 		}
 		/* Error: Disk full. */
 		else if (errno == EDQUOT) {
-			errcode = EALLOC;
+			errcode = ETFTP_ALLOC;
 		}
 		/* Error: Access violation. */
 		else if (errno == EACCES) {
-			errcode = EACCESS;
+			errcode = ETFTP_ACCESS;
 		}
 		fill_error_hdr(&hdr, errcode, NULL);
 		send_hdr(&hdr);
