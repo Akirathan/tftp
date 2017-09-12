@@ -27,7 +27,7 @@ static void unexpected_hdr(tftp_header_t *hdr);
 static void write_file(const char *fname);
 static void read_file(const char *fname);
 static void timeout_handler(int signum);
-static void rebind(const char *service);
+static int rebind(const char *service);
 static void generic_server();
 static void process_opts(int argc, char **argv);
 
@@ -344,8 +344,10 @@ timeout_handler(int signum)
 /**
  * Rebind to the given port ie. reopen client socket. Note that this function is
  * called on the beginning of every connection.
+ * Returns 0 if bind results in EADDRINUSE.
+ * Returns 1 on success.
  */
-static void
+static int
 rebind(const char *service)
 {
 	int error;
@@ -367,10 +369,14 @@ rebind(const char *service)
 		err(EXIT_FAILURE, "socket");
 
 	/* Bind the first address returned by getaddrinfo. */
-	if (bind(client_sock, res->ai_addr, res->ai_addrlen) == -1)
-		err(EXIT_FAILURE, "bind");
+	if (bind(client_sock, res->ai_addr, res->ai_addrlen) == -1) {
+		if (errno == EADDRINUSE) {
+			return 0;
+		}
+	}
 
 	freeaddrinfo(res);
+	return 1;
 }
 
 /**
@@ -393,10 +399,13 @@ process_connection(void *p)
 	char service[PORT_LEN];
 	tftp_header_t hdr;
 	parameter_t par = *((parameter_t *) p);
+	int ret = 0;
 
 	/* Rebind client_sock to random port. */
-	random_service(service);
-	rebind(service);
+	while (!ret) {
+		random_service(service);
+		ret = rebind(service);
+	}
 
 	/* Copy client_addr and client_addr_len from parameter. */
 	client_addr = par.client_addr;
