@@ -16,10 +16,13 @@
 /* Number of concurrently running threads. */
 #define THREAD_NUM		10
 
+#include <err.h>
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sched.h>
 
+void remove_thread(void *arg);
 void new_thread(void * (* fnc) (void *), void *arg, size_t arg_len);
 void init_pool();
 

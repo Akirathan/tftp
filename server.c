@@ -415,6 +415,9 @@ process_connection(void *p)
 	parameter_t par = *((parameter_t *) p);
 	int ret = 0;
 
+	/* register cleanup handler to thread_pool. */
+	pthread_cleanup_push(remove_thread, NULL);
+
 	/* Rebind client_sock to random port. */
 	while (!ret) {
 		random_service(service);
@@ -444,6 +447,8 @@ process_connection(void *p)
 		break;
 	}
 
+	close(client_sock);
+	pthread_cleanup_pop(1);
 	return NULL;
 }
 

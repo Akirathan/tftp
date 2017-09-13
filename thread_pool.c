@@ -9,6 +9,7 @@
 #include "thread_pool.h"
 
 static struct {
+	pthread_mutex_t mutex;
 	pthread_t thread;
 	int active;
 	/*
@@ -22,61 +23,85 @@ static struct {
 	size_t par_len;
 } threads[THREAD_NUM];
 
-/* Current thread index. */
-static size_t curr_idx = 0;
-
-static void remove_curr_thread();
+/**
+ * This function must be pushed as cleanup handler to every thread that uses
+ * this thread_pool.
+ */
+void
+remove_thread(void *arg)
+{
+	for (size_t i = 0; i < THREAD_NUM; ++i) {
+		if (pthread_equal(pthread_self(), threads[i].thread)) {
+			pthread_mutex_lock(&threads[i].mutex);
+			/* pthread_t are reused because threads are detached - null it. */
+			bzero(&threads[i].thread, sizeof(threads[i].thread));
+			free(threads[i].par_buf);
+			threads[i].par_len = 0;
+			threads[i].active = 0;
+		}
+		pthread_mutex_unlock(&threads[i].mutex);
+	}
+}
 
 /**
+ * Inserts new detached thread into pool.
  * init_pool must be called before this function.
+ * If there is no room for new thread, waits for first one.
  */
 void
 new_thread(void * (* fnc) (void *), void *arg, size_t arg_len)
 {
 	void *p;
+	pthread_attr_t attr;
 
-	/* Check whether pool is full. */
-	if (curr_idx == THREAD_NUM)
-		curr_idx = 0;
+	/* Init detached attribute. */
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-	/* If current thread is active, join it. */
-	if (threads[curr_idx].active)
-		remove_curr_thread();
-
-	/* Allocate memory for arguments and copy them into threads struct. */
+	/* Allocate memory for arguments. */
 	p = malloc(arg_len);
 	memcpy(p, arg, arg_len);
-	threads[curr_idx].par_buf = p;
-	threads[curr_idx].par_len = arg_len;
 
-	/* Start thread. */
-	pthread_create(&threads[curr_idx].thread, NULL, fnc, threads[curr_idx].par_buf);
-	threads[curr_idx].active = 1;
+	for (size_t i = 0; i < THREAD_NUM; ++i) {
+		if (threads[i].active)
+			continue;
 
-	curr_idx++;
+		pthread_mutex_lock(&threads[i].mutex);
+		threads[i].par_buf = p;
+		threads[i].par_len = arg_len;
+		/* Start detached thread. */
+		threads[i].active = 1;
+		pthread_mutex_unlock(&threads[i].mutex);
+		pthread_create(&threads[i].thread, &attr, fnc, threads[i].par_buf);
+		return;
+	}
+
+	/* All threads are active - wait for first one. */
+	for (;;) {
+		if (threads[0].active) {
+			sched_yield();
+		}
+		else {
+			break;
+		}
+	}
+
+	pthread_mutex_lock(&threads[0].mutex);
+	threads[0].par_buf = p;
+	threads[0].par_len = arg_len;
+	threads[0].active = 1;
+	pthread_mutex_unlock(&threads[0].mutex);
+	pthread_create(&threads[0].thread, NULL, fnc, threads[0].par_buf);
 }
 
 void
 init_pool()
 {
 	for (size_t i = 0; i < THREAD_NUM; ++i) {
+		if (pthread_mutex_init(&threads[i].mutex, NULL) != 0)
+			err(EXIT_FAILURE, "pthread_mutex_init");
 		threads[i].active = 0;
 		threads[i].par_len = 0;
 	}
-}
-
-/**
- * Removes current thread and dealocates its parameter buffer.
- */
-static void
-remove_curr_thread()
-{
-	if (!threads[curr_idx].active)
-		return;
-
-	pthread_join(threads[curr_idx].thread, NULL);
-	free(threads[curr_idx].par_buf);
-	threads[curr_idx].par_len = 0;
-	threads[curr_idx].active = 0;
 }
 
