@@ -15,11 +15,19 @@ To build the server simply run `make`, this will create `tftp_server` binary in 
   - Specifies root directory for the server.
 
 ## Implementation
-First options are processed and alarm signal handler is set.
+First options are processed and alarm signal handler is reset.
 Then control is passed to `generic_server` function that listens on initial port (69 or the one specified in options).
 After the first packet from client is received, new thread is inserted into `thread_pool` via `new_thread` function and this thread manages rest of the connection.
 Note that in `thread_pool.h` number of concurrently running threads can be configured with `THREAD_NUM` define.
 Depending whether client uploads or downloads file, control is passed to `write_file` or `read_file` function respectively.
+
+## Tests
+There is a python script `tftp_tests.py` for testing in a root directory.
+In order to run the tests you need to modify some constants in the script (client and server directory, server ip and port).
+Client and server directory must be distinct.
+Files are created, uploaded, downloaded and then removed in the script.
+Every testing function prints the result on the end, along with some logging information.
+Note that python 3 is required.
 
 
 ### Handled errors
