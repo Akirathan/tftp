@@ -158,7 +158,7 @@ concat_paths(const char *dirpath, const char *fname)
 		return NULL;
 
 	/* Build the string */
-	bzero(filepath, size);
+	memset(filepath, 0, size);
 	strncat(filepath, dirpath, MAXPATHLEN);
 	/* Add trailing / to directory path if necessary. */
 	if (dirpath[strlen(dirpath)-1] != '/') {

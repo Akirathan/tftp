@@ -34,7 +34,7 @@ remove_thread(void *arg)
 		if (pthread_equal(pthread_self(), threads[i].thread)) {
 			pthread_mutex_lock(&threads[i].mutex);
 			/* pthread_t are reused because threads are detached - null it. */
-			bzero(&threads[i].thread, sizeof(threads[i].thread));
+			memset(&threads[i].thread, 0, sizeof(threads[i].thread));
 			free(threads[i].par_buf);
 			threads[i].par_len = 0;
 			threads[i].active = 0;
