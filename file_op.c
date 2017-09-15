@@ -33,7 +33,7 @@ read_file_convert(FILE *file, tftp_mode_t mode, char *buf, size_t *bufsize,
 
 	if (mode == MODE_OCTET) {
 		if ((n = read(fileno(file), buf, maxbufsize)) == -1)
-			err(EXIT_FAILURE, "read");
+			perror("read");
 		*bufsize = n;
 	}
 	else if (mode == MODE_NETASCII) {
@@ -92,7 +92,7 @@ static void
 write_char(const char c, FILE *file)
 {
 	if (fputc((int) c, file) == EOF)
-		err(EXIT_FAILURE, "putc");
+		perror("fputc");
 }
 
 /**
@@ -136,7 +136,7 @@ write_file_convert(FILE *file, tftp_mode_t mode, const char *packet,
 {
 	if (mode == MODE_OCTET) {
 		if (write(fileno(file), packet, packetlen) != packetlen)
-			err(EXIT_FAILURE, "write");
+			perror("write");
 	}
 	else if (mode == MODE_NETASCII) {
 		/* Check if last char of previous buffer was \r or \n */

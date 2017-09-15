@@ -15,7 +15,6 @@
 #include <strings.h>
 #include <string.h>
 #include <pthread.h>
-#include <err.h>
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/types.h>

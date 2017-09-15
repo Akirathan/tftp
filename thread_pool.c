@@ -98,8 +98,10 @@ void
 init_pool()
 {
 	for (size_t i = 0; i < THREAD_NUM; ++i) {
-		if (pthread_mutex_init(&threads[i].mutex, NULL) != 0)
-			err(EXIT_FAILURE, "pthread_mutex_init");
+		if (pthread_mutex_init(&threads[i].mutex, NULL) != 0) {
+			perror("pthread_mutex_init");
+			exit(EXIT_FAILURE);
+		}
 		threads[i].active = 0;
 		threads[i].par_len = 0;
 	}

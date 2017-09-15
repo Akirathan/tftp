@@ -14,7 +14,6 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <err.h>
 #include "tftp.h"
 
 void read_file_convert(FILE *file, tftp_mode_t mode, char *buf, size_t *bufsize,

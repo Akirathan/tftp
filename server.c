@@ -54,8 +54,10 @@ resolve_service_by_privileges(char *service)
 	}
 	/* Root privileges. */
 	else if (geteuid() == 0) {
-		if ((ent = getservbyname("tftp", "udp")) == NULL)
-			err(EXIT_FAILURE, "getservbyname");
+		if ((ent = getservbyname("tftp", "udp")) == NULL) {
+			perror("getservbyname");
+			exit(EXIT_FAILURE);
+		}
 		snprintf(service, PORT_LEN, "%d", ntohs(ent->s_port));
 	}
 	/* Error. */
@@ -86,8 +88,10 @@ send_hdr(const tftp_header_t *hdr)
 
 	copy_to_buffer(buf, hdr);
 
-	if (sendto(client_sock, buf, buf_len, 0, &client_addr, client_addr_len) == -1)
-		err(EXIT_FAILURE, "sendto");
+	if (sendto(client_sock, buf, buf_len, 0, &client_addr, client_addr_len) == -1) {
+		perror("sendto");
+		exit(EXIT_FAILURE);
+	}
 }
 
 /**
@@ -109,8 +113,10 @@ receive_hdr(tftp_header_t *hdr)
 		old_client_addrdata[i] = client_addr.sa_data[i];
 	}
 
-	if ((ret = poll(&poll_struct, 1, timeout * 1000)) == -1)
-		err(EXIT_FAILURE, "poll");
+	if ((ret = poll(&poll_struct, 1, timeout * 1000)) == -1) {
+		perror("poll");
+		exit(EXIT_FAILURE);
+	}
 
 	if (ret == 0) {
 		/* Timeout. */
@@ -120,8 +126,10 @@ receive_hdr(tftp_header_t *hdr)
 
 	/* Receive packet. */
 	if ((n = recvfrom(client_sock, buf, PACKET_LEN, 0, &client_addr,
-			&client_addr_len)) == -1)
-		err(EXIT_FAILURE, "recvfrom");
+			&client_addr_len)) == -1) {
+		perror("recvfrom");
+		exit(EXIT_FAILURE);
+	}
 
 	/* Check if client's port (TID) changed. */
 	for (size_t i = 0; i < 14; ++i) {
@@ -261,11 +269,12 @@ write_file(const char *fname)
 			/* Write data to file. */
 			write_file_convert(file, mode, (char *) hdr.data_data, hdr.data_len);
 
-			if (last_packet)
+			if (last_packet) {
 				/* Send ACK for last packet. */
 				ack_hdr.ack_blocknum = blocknum;
 				send_hdr(&ack_hdr);
 				break;
+			}
 		}
 		else {
 			/* Error occured - print error and terminate connection. */
@@ -375,12 +384,16 @@ rebind(const char *service)
 	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
 
 	/* getaddrinfo call that is suitable for binding. */
-	if ((error = getaddrinfo(NULL, service, &hints, &res)) != 0)
-		err(EXIT_FAILURE, "getaddrinfo: %s", gai_strerror(error));
+	if ((error = getaddrinfo(NULL, service, &hints, &res)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s", gai_strerror(error));
+		exit(EXIT_FAILURE);
+	}
 
 	/* Create socket. */
-	if ((client_sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1)
-		err(EXIT_FAILURE, "socket");
+	if ((client_sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1) {
+		perror("socket");
+		exit(EXIT_FAILURE);
+	}
 
 	/* Bind the first address returned by getaddrinfo. */
 	if (bind(client_sock, res->ai_addr, res->ai_addrlen) == -1) {
@@ -444,6 +457,8 @@ process_connection(void *p)
 
 	default:
 		/* Client should not initiate communication with other opcodes. */
+		fill_error_hdr(&hdr, ETFTP_OP, NULL);
+		send_hdr(&hdr);
 		break;
 	}
 
