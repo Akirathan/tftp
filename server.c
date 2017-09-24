@@ -428,9 +428,6 @@ process_connection(void *p)
 	parameter_t par = *((parameter_t *) p);
 	int ret = 0;
 
-	/* register cleanup handler to thread_pool. */
-	pthread_cleanup_push(remove_thread, NULL);
-
 	/* Rebind client_sock to random port. */
 	while (!ret) {
 		random_service(service);
@@ -463,7 +460,6 @@ process_connection(void *p)
 	}
 
 	close(client_sock);
-	pthread_cleanup_pop(1);
 	return NULL;
 }
 
@@ -479,6 +475,10 @@ generic_server()
 	char service[PORT_LEN];
 	struct sockaddr clientaddr;
 	socklen_t clientaddrlen = sizeof(clientaddr);
+    pool_t pool;
+
+	/* Initialize thread pool. */
+	pool_init(&pool);
 
 	/* Initial binding. */
 	resolve_service_by_privileges(service);
@@ -495,7 +495,7 @@ generic_server()
 		par.client_addr = clientaddr;
 		par.client_addr_len = clientaddrlen;
 
-		new_thread(process_connection, (void *) &par, sizeof(par));
+		pool_insert(&pool, process_connection, (void *) &par, sizeof(par));
 	}
 }
 
@@ -527,9 +527,5 @@ int
 main(int argc, char **argv)
 {
 	process_opts(argc, argv);
-
-	/* Initialize thread pool. */
-	init_pool();
-
 	generic_server();
 }

@@ -8,13 +8,30 @@
 
 #include "thread_pool.h"
 
+//#define TP_TEST
 
 static void * thread_routine(void *arg);
+static void thread_cleanup(void *arg);
+
+static void
+thread_cleanup(void *arg) {
+    thread_t *thread = (thread_t *) arg;
+
+    /* Mutex can be unlocked if thread was cancelled during waiting for condition. */
+    pthread_mutex_trylock(&thread->mtx);
+
+    pthread_mutex_unlock(&thread->mtx);
+    pthread_mutex_destroy(&thread->mtx);
+    pthread_cond_destroy(&thread->work_signal);
+    if (thread->params != NULL) {
+        free(thread->params);
+    }
+}
 
 static void *
 thread_routine(void *arg) {
     pool_t *pool = (pool_t *) arg;
-    thread_t *this;
+    thread_t *this = NULL;
 
     /* Find "this" thread. */
     for (int i = 0; i < THREAD_NUM; ++i) {
@@ -23,10 +40,11 @@ thread_routine(void *arg) {
         }
     }
 
+    pthread_cleanup_push(thread_cleanup, this);
+
     pthread_mutex_lock(&this->mtx);
     /* Wait until every thread in pool is initialized. */
     pthread_barrier_wait(&pool->barrier);
-
     for (;;) {
         /* Wait for work_signal. */
         while (!this->work_ready) {
@@ -37,27 +55,32 @@ thread_routine(void *arg) {
         free(this->params);
         this->work_ready = false;
     }
-    pthread_mutex_unlock(&this->mtx);
+
+    pthread_cleanup_pop(1);
     return NULL;
 }
 
+
+/**
+ * Cancels and joins every thread inside the pool.
+ */
 void
 pool_destroy(pool_t *pool)
 {
     pthread_barrier_destroy(&pool->barrier);
 
     for (int i = 0; i < THREAD_NUM; ++i) {
-        thread_t curr_thread = pool->threads[i];
+        thread_t *curr_thread = &pool->threads[i];
 
-        pthread_cancel(curr_thread.pthread);
-        pthread_join(curr_thread.pthread, NULL);
-
-        // TODO free params.
-        pthread_mutex_destroy(&curr_thread.mtx);
-        pthread_cond_destroy(&curr_thread.work_signal);
+        pthread_cancel(curr_thread->pthread);
+        pthread_join(curr_thread->pthread, NULL);
     }
 }
 
+/**
+ * Initialize the thread pool. This function does not return until every thread
+ * is initialized.
+ */
 void
 pool_init(pool_t *pool)
 {
@@ -68,6 +91,7 @@ pool_init(pool_t *pool)
 
         pthread_mutex_init(&curr_thread->mtx, NULL);
         curr_thread->work_ready = false;
+        curr_thread->params = NULL;
         pthread_cond_init(&curr_thread->work_signal, NULL);
         pthread_create(&curr_thread->pthread, NULL, thread_routine, pool);
     }
@@ -76,6 +100,11 @@ pool_init(pool_t *pool)
     pthread_barrier_wait(&pool->barrier);
 }
 
+/**
+ * Assigns function fnc to any non-working thread.
+ * @return 0 when fnc was successfully assigned to some thread, EPOOL_FULL when
+ * every thread is busy.
+ */
 int
 pool_insert(pool_t *pool, void *(*fnc)(void *), void *arg, size_t arg_len)
 {
@@ -102,7 +131,9 @@ pool_insert(pool_t *pool, void *(*fnc)(void *), void *arg, size_t arg_len)
     return EPOOL_FULL;
 }
 
-#define CYCLE_CNT   1000
+#ifdef TP_TEST
+
+#define CYCLE_CNT   10000
 static int th_num = 0;
 static pthread_mutex_t th_num_mtx = PTHREAD_MUTEX_INITIALIZER;
 static int thread_complete[CYCLE_CNT];
@@ -123,7 +154,8 @@ thread_func(void *arg)
     return NULL;
 }
 
-int main()
+void
+test()
 {
     int num = 0;
     int missed = 0;
@@ -149,3 +181,9 @@ int main()
     }
     printf("\n");*/
 }
+
+int main()
+{
+    test();
+}
+#endif

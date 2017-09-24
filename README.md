@@ -17,7 +17,7 @@ To build the server simply run `make`, this will create `tftp_server` binary in 
 ## Implementation
 First options are processed and alarm signal handler is reset.
 Then control is passed to `generic_server` function that listens on initial port (69 or the one specified in options).
-After the first packet from client is received, new thread is inserted into `thread_pool` via `new_thread` function and this thread manages rest of the connection.
+After the first packet from client is received, new work is assigned into `thread_pool` via `pool_insert` function and manages rest of the connection.
 Note that in `thread_pool.h` number of concurrently running threads can be configured with `THREAD_NUM` define.
 Depending whether client uploads or downloads file, control is passed to `write_file` or `read_file` function respectively.
 
