@@ -52,9 +52,7 @@ pool_destroy(pool_t *pool)
         pthread_cancel(curr_thread.pthread);
         pthread_join(curr_thread.pthread, NULL);
 
-        if (curr_thread.params != NULL) {
-            free(curr_thread.params); // TODO ??
-        }
+        // TODO free params.
         pthread_mutex_destroy(&curr_thread.mtx);
         pthread_cond_destroy(&curr_thread.work_signal);
     }
