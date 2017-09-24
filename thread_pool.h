@@ -20,7 +20,7 @@
 #define THREAD_POOL_H_
 
 /* Number of concurrently running threads. */
-#define THREAD_NUM		10
+#define THREAD_NUM		8
 #define EPOOL_FULL      1
 
 #include <pthread.h>
@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <sched.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 typedef struct _thread {
     pthread_t pthread;
@@ -42,8 +43,13 @@ typedef struct _thread {
     void *params;
 } thread_t;
 
-void pool_init();
-void pool_destroy();
-int pool_insert(void * (* fnc) (void *), void *arg, size_t arg_len);
+typedef struct _pool {
+    thread_t threads[THREAD_NUM];
+    pthread_barrier_t barrier;
+} pool_t;
+
+void pool_init(pool_t *pool);
+void pool_destroy(pool_t *pool);
+int pool_insert(pool_t *pool, void *(*fnc)(void *), void *arg, size_t arg_len);
 
 #endif /* THREAD_POOL_H_ */
