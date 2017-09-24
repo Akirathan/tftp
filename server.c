@@ -16,7 +16,7 @@ static socklen_t client_addr_len = sizeof(client_addr);
 static unsigned int timeout = 3;
 static char port[PORT_LEN] = "0";
 /* Local connection errno. */
-static int conn_err = ETFTP_UNDEF;
+static __thread int conn_err = ETFTP_UNDEF;
 
 static void usage(char *program);
 static void resolve_service_by_privileges(char *service);
@@ -231,6 +231,8 @@ write_file(const char *fname)
 	}
 
 	for (;;) {
+		prev_io_t prev_io = {0, 0};
+
 		ack_hdr.opcode = OPCODE_ACK;
 		ack_hdr.ack_blocknum = blocknum;
 		send_hdr(&ack_hdr);
@@ -267,7 +269,7 @@ write_file(const char *fname)
 			}
 
 			/* Write data to file. */
-			write_file_convert(file, mode, (char *) hdr.data_data, hdr.data_len);
+			write_file_convert(file, &prev_io, mode, (char *) hdr.data_data, hdr.data_len);
 
 			if (last_packet) {
 				/* Send ACK for last packet. */
@@ -323,7 +325,9 @@ read_file(const char *filename)
 	}
 
 	do {
-		read_file_convert(file, mode, (char *) buf, &bufsize, DATA_LEN);
+		prev_io_t prev_io = {0, 0};
+
+		read_file_convert(file, &prev_io, mode, (char *) buf, &bufsize, DATA_LEN);
 
 	send_data:
 		/* Fill and send header. */
@@ -398,6 +402,7 @@ rebind(const char *service)
 	/* Bind the first address returned by getaddrinfo. */
 	if (bind(client_sock, res->ai_addr, res->ai_addrlen) == -1) {
 		if (errno == EADDRINUSE) {
+			freeaddrinfo(res);
 			return 0;
 		}
 	}

@@ -7,11 +7,6 @@
 
 #include "file_op.h"
 
-static __thread char prev_char;
-/* There is a pending char from previous reading or last char from writing
- * buffer is \r */
-static __thread int from_prev = 0;
-
 static void write_char(const char c, FILE *file);
 static int convert(const char c1, const char c2, char *c);
 
@@ -25,8 +20,8 @@ static int convert(const char c1, const char c2, char *c);
  * 	\n --> \r \n
  */
 void
-read_file_convert(FILE *file, tftp_mode_t mode, char *buf, size_t *bufsize,
-		size_t maxbufsize)
+read_file_convert(FILE *file, prev_io_t *prev_io, tftp_mode_t mode, char *buf,
+				  size_t *bufsize, size_t maxbufsize)
 {
 	size_t buf_idx = 0, n;
 	int currchar;
@@ -38,9 +33,9 @@ read_file_convert(FILE *file, tftp_mode_t mode, char *buf, size_t *bufsize,
 	}
 	else if (mode == MODE_NETASCII) {
 		/* Check if there is a pending char from previous reading. */
-		if (from_prev) {
-			buf[buf_idx++] = prev_char;
-			from_prev = 0;
+		if (prev_io->from_prev) {
+			buf[buf_idx++] = prev_io->prev_char;
+			prev_io->from_prev = 0;
 		}
 
 		/* While buffer is not full. */
@@ -55,9 +50,9 @@ read_file_convert(FILE *file, tftp_mode_t mode, char *buf, size_t *bufsize,
 			if (currchar == '\r') {
 				/* Check if this is last char that fits into buf. */
 				if (buf_idx == maxbufsize - 1) {
-					from_prev = 1;
+					prev_io->from_prev = 1;
 					buf[buf_idx++] = '\r';
-					prev_char = '\0';
+					prev_io->prev_char = '\0';
 				}
 				else {
 					buf[buf_idx++] = '\r';
@@ -68,9 +63,9 @@ read_file_convert(FILE *file, tftp_mode_t mode, char *buf, size_t *bufsize,
 			else if (currchar == '\n') {
 				/* Check if this is last char that fits into buf */
 				if (buf_idx == maxbufsize - 1) {
-					from_prev = 1;
+					prev_io->from_prev = 1;
 					buf[buf_idx++] = '\r';
-					prev_char = '\n';
+					prev_io->prev_char = '\n';
 				}
 				else {
 					buf[buf_idx++] = '\r';
@@ -79,7 +74,7 @@ read_file_convert(FILE *file, tftp_mode_t mode, char *buf, size_t *bufsize,
 			}
 			/* Copy */
 			else {
-				buf[buf_idx++] = currchar;
+				buf[buf_idx++] = (char) currchar;
 			}
 		}
 	/* Return number of bytes filled into buffer. */
@@ -131,8 +126,7 @@ convert(const char c1, const char c2, char *c)
  * 	 \n \r --> \n
  */
 void
-write_file_convert(FILE *file, tftp_mode_t mode, const char *packet,
-		size_t packetlen)
+write_file_convert(FILE *file, prev_io_t *prev_io, tftp_mode_t mode, const char *packet, size_t packetlen)
 {
 	if (mode == MODE_OCTET) {
 		if (write(fileno(file), packet, packetlen) != packetlen)
@@ -140,19 +134,19 @@ write_file_convert(FILE *file, tftp_mode_t mode, const char *packet,
 	}
 	else if (mode == MODE_NETASCII) {
 		/* Check if last char of previous buffer was \r or \n */
-		if (from_prev) {
-			if (prev_char == '\r' && packet[0] == '\0') {
+		if (prev_io->from_prev) {
+			if (prev_io->prev_char == '\r' && packet[0] == '\0') {
 				write_char('\r', file);
 			}
-			else if (prev_char == '\r' && packet[0] == '\n') {
+			else if (prev_io->prev_char == '\r' && packet[0] == '\n') {
 				write_char('\n', file);
 			}
-			else if (prev_char == '\n' && packet[0] == '\r') {
+			else if (prev_io->prev_char == '\n' && packet[0] == '\r') {
 				write_char('\n', file);
 			}
 			else {
 				/* \r \r OR \n \n */
-				write_char(prev_char, file);
+				write_char(prev_io->prev_char, file);
 				write_char(packet[0], file);
 			}
 		}
@@ -162,16 +156,16 @@ write_file_convert(FILE *file, tftp_mode_t mode, const char *packet,
 			char writechar;
 
 			/* Skip first char. */
-			if (from_prev) {
-				from_prev = 0;
+			if (prev_io->from_prev) {
+				prev_io->from_prev = 0;
 				continue;
 			}
 
 			/* End of packet. */
 			if (i == packetlen-1 && (packet[i] == '\r' || packet[i] == '\n')) {
 				/* Store for next function invocation. */
-				from_prev = 1;
-				prev_char = packet[i];
+				prev_io->from_prev = 1;
+				prev_io->prev_char = packet[i];
 			}
 			else if (i == packetlen-1) {
 				write_char(packet[i], file);
