@@ -34,7 +34,7 @@ static void
 to_lower_str(char *dest, const char *src)
 {
 	while (*src != '\0') {
-		*dest = tolower((int) *src);
+		*dest = (char) tolower((int) *src);
 		src++;
 		dest++;
 	}
@@ -132,7 +132,7 @@ read_packet(tftp_header_t *hdr, uint8_t *packet, size_t packet_len)
 
 	/* First two bytes are opcode. */
 	opcode = ntohs(*((uint16_t *) packet));
-	hdr->opcode = opcode;
+	hdr->opcode = (opcode_t) opcode;
 	packet_idx += 2;
 
 	switch (hdr->opcode) {

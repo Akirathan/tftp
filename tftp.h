@@ -55,7 +55,7 @@ typedef enum {
 	MODE_OCTET
 } tftp_mode_t;
 
-typedef struct {
+typedef struct _header {
 	opcode_t opcode;
 	union {
 		struct {

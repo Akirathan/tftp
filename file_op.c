@@ -23,13 +23,14 @@ void
 read_file_convert(FILE *file, prev_io_t *prev_io, tftp_mode_t mode, char *buf,
 				  size_t *bufsize, size_t maxbufsize)
 {
-	size_t buf_idx = 0, n;
+	size_t buf_idx = 0;
+	ssize_t n = 0;
 	int currchar;
 
 	if (mode == MODE_OCTET) {
 		if ((n = read(fileno(file), buf, maxbufsize)) == -1)
 			perror("read");
-		*bufsize = n;
+		*bufsize = (size_t) n;
 	}
 	else if (mode == MODE_NETASCII) {
 		/* Check if there is a pending char from previous reading. */
