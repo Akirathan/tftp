@@ -211,6 +211,7 @@ write_file(const char *fname)
 	uint16_t errcode = 0;
 	int last_packet = 0;
 	int resend_ack = 0;
+	prev_io_t prev_io = {0, 0};
 
 	if ((fpath = concat_paths(dirpath, fname)) == NULL) {
 		/* Error: Filepath too long. */
@@ -232,8 +233,6 @@ write_file(const char *fname)
 	}
 
 	for (;;) {
-		prev_io_t prev_io = {0, 0};
-
 		ack_hdr.opcode = OPCODE_ACK;
 		ack_hdr.ack_blocknum = blocknum;
 		send_hdr(&ack_hdr);
@@ -302,6 +301,7 @@ read_file(const char *filename)
 	uint8_t buf[DATA_LEN];
 	size_t bufsize;
 	char *fpath;
+	prev_io_t prev_io = {0, 0};
 
 	if ((fpath = concat_paths(dirpath, filename)) == NULL) {
 		/* Error: File not found. */
@@ -327,8 +327,6 @@ read_file(const char *filename)
 	}
 
 	do {
-		prev_io_t prev_io = {0, 0};
-
 		read_file_convert(file, &prev_io, mode, (char *) buf, &bufsize, DATA_LEN);
 
 	send_data:
