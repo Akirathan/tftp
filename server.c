@@ -58,7 +58,7 @@ resolve_service_by_privileges(char *service)
 			perror("getservbyname");
 			exit(EXIT_FAILURE);
 		}
-		snprintf(service, PORT_LEN, "%d", ntohs(ent->s_port));
+		snprintf(service, PORT_LEN, "%d", ntohs((uint16_t) ent->s_port));
 	}
 	/* Error. */
 	else {
@@ -102,7 +102,7 @@ send_hdr(const tftp_header_t *hdr)
 static int
 receive_hdr(tftp_header_t *hdr)
 {
-	int n = 0;
+	ssize_t n = 0;
 	uint8_t buf[PACKET_LEN];
 	char old_client_addrdata[14];
 	struct pollfd poll_struct = {client_sock, POLLIN, 0};
@@ -141,7 +141,7 @@ receive_hdr(tftp_header_t *hdr)
 	}
 
 	/* Convert packet to tftp_header_t. */
-	read_packet(hdr, buf, n);
+	read_packet(hdr, buf, (size_t) n);
 	return 1;
 }
 
@@ -207,7 +207,8 @@ write_file(const char *fname)
 	tftp_header_t ack_hdr;
 	FILE *file;
 	char *fpath;
-	uint16_t blocknum = 0, errcode;
+	uint16_t blocknum = 0;
+	uint16_t errcode = 0;
 	int last_packet = 0;
 	int resend_ack = 0;
 
@@ -294,7 +295,8 @@ write_file(const char *fname)
 static void
 read_file(const char *filename)
 {
-	uint16_t blocknum = 1, errcode;
+	uint16_t blocknum = 1;
+	uint16_t errcode = 0;
 	tftp_header_t hdr;
 	FILE *file;
 	uint8_t buf[DATA_LEN];
@@ -475,7 +477,7 @@ process_connection(void *p)
 static void
 generic_server()
 {
-	int n;
+	ssize_t n;
 	uint8_t buff[DATA_LEN];
 	char service[PORT_LEN];
 	struct sockaddr clientaddr;
@@ -496,7 +498,7 @@ generic_server()
 
 		/* Fill parameter_t struct. */
 		memcpy(par.buff, buff, DATA_LEN);
-		par.buff_len = n;
+		par.buff_len = (size_t) n;
 		par.client_addr = clientaddr;
 		par.client_addr_len = clientaddrlen;
 
@@ -514,7 +516,7 @@ process_opts(int argc, char **argv)
 			strncpy(port, optarg, PORT_LEN);
 		}
 		else if (opt == 't') {
-			timeout = atoi(optarg);
+			timeout = (unsigned int) atoi(optarg);
 		}
 		else if (opt == '?') {
 			usage(argv[0]);
