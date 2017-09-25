@@ -229,6 +229,7 @@ write_file(const char *fname)
 		}
 		fill_error_hdr(&hdr, errcode, NULL);
 		send_hdr(&hdr);
+		fclose(file);
 		return;
 	}
 
@@ -285,7 +286,7 @@ write_file(const char *fname)
 		}
 	}
 
-	fflush(file);
+	fclose(file);
 }
 
 /**
@@ -323,6 +324,7 @@ read_file(const char *filename)
 		}
 		fill_error_hdr(&hdr, errcode, NULL);
 		send_hdr(&hdr);
+		fclose(file);
 		return;
 	}
 
@@ -366,6 +368,8 @@ read_file(const char *filename)
 			break;
 		}
 	} while (bufsize == DATA_LEN);
+
+	fclose(file);
 }
 
 /**
