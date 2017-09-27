@@ -27,7 +27,7 @@
 #define THREAD_POOL_H_
 
 /* Number of concurrently running threads. */
-#define THREAD_NUM		10
+#define THREAD_NUM		2
 /* Error: Thread pool is busy. */
 #define EPOOL_FULL      1
 

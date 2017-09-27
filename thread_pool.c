@@ -53,6 +53,7 @@ thread_routine(void *arg) {
         this->fnc(this->params);
         /* Cleanup. */
         free(this->params);
+        this->params = NULL;
         this->work_ready = false;
     }
 
@@ -133,7 +134,7 @@ pool_insert(pool_t *pool, void *(*fnc)(void *), void *arg, size_t arg_len)
 
 #ifdef TP_TEST
 
-#define CYCLE_CNT   10000
+#define CYCLE_CNT   3
 static int th_num = 0;
 static pthread_mutex_t th_num_mtx = PTHREAD_MUTEX_INITIALIZER;
 static int thread_complete[CYCLE_CNT];
