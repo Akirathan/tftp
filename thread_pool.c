@@ -1,7 +1,6 @@
 #include "thread_pool.h"
 
-//#define TP_TEST
-static bool debug = true;
+static bool debug = false;
 
 static void queue_init(queue_t *queue);
 static int queue_push(queue_t *queue, work_t *work);
@@ -97,16 +96,16 @@ thread_routine(void *arg)
 		pthread_mutex_lock(&pool->mtx);
 		while (pool->queue.size == 0) {
 			if (debug)
-				printf("Non-main: Waiting for cond_workrdy.\n");
+				printf("Thread %lu: Waiting for cond_workrdy.\n", pthread_self());
 			pthread_cond_wait(&pool->cond_workrdy, &pool->mtx);
 		}
 		if (debug)
-			printf("Non-main: Pop.\n");
+			printf("Thread %lu: Pop.\n", pthread_self());
 		queue_pop(&pool->queue, &work);
 		if (pool->queue.size == QUEUE_LEN - 1) {
 			/* Signal to main thread that the queue is not full anymore. */
 			if (debug)
-				printf("Non-main: Signal cond_insertrdy.\n");
+				printf("Thread %lu: Signal cond_insertrdy.\n", pthread_self());
 			pthread_cond_signal(&pool->cond_insertrdy);
 		}
 		pthread_mutex_unlock(&pool->mtx);
@@ -193,9 +192,10 @@ pool_insert(pool_t *pool, void *(*fnc)(void *), void *arg, size_t arg_len)
 	pthread_mutex_unlock(&pool->mtx);
 }
 
+//#define TP_TEST
 #ifdef TP_TEST
 
-#define CYCLE_CNT   1
+#define CYCLE_CNT   40
 static int th_num = 0;
 static pthread_mutex_t th_num_mtx = PTHREAD_MUTEX_INITIALIZER;
 static int thread_complete[CYCLE_CNT];
@@ -213,28 +213,9 @@ thread_func(void *arg)
 	th_num++;
 	pthread_mutex_unlock(&th_num_mtx);
 
-	printf("Non-main work: %d\n", thrd_num);
+	printf("Thread %lu: Work: %d\n", pthread_self(), thrd_num);
 
 	return NULL;
-}
-
-void
-queue_test()
-{
-	queue_t queue;
-	work_t work;
-	int ret = 0;
-
-	queue_init(&queue);
-	for (int i = 0; i < QUEUE_LEN; ++i) {
-		queue_push(&queue, &work);
-	}
-	ret = queue_push(&queue, &work); // EQUEUE_FULL
-
-	for (int j = 0; j < QUEUE_LEN; ++j) {
-		queue_pop(&queue, &work);
-	}
-	ret = queue_pop(&queue, &work); // EQUEUE_EMPTY
 }
 
 void
@@ -251,6 +232,7 @@ test()
 	}
 	sleep(1);
 	pool_destroy(&pool);
+	printf("Total work: %d\n", th_num);
 }
 
 int main()

@@ -23,8 +23,8 @@
 #define THREAD_POOL_H_
 
 /* Number of concurrently running threads. */
-#define THREAD_NUM		2
-#define QUEUE_LEN		2
+#define THREAD_NUM		5
+#define QUEUE_LEN		20
 
 #define EQUEUE_FULL 	1
 #define EQUEUE_EMPTY 	2
