@@ -28,8 +28,10 @@
 
 /* Number of concurrently running threads. */
 #define THREAD_NUM		2
-/* Error: Thread pool is busy. */
-#define EPOOL_FULL      1
+#define QUEUE_LEN		2
+
+#define EQUEUE_FULL 	1
+#define EQUEUE_EMPTY 	2
 
 #include <pthread.h>
 #include <string.h>
@@ -39,31 +41,11 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-typedef struct _thread {
-    pthread_t pthread;
-    /**
-     * mtx is locked while thread is working.
-     */
-    pthread_mutex_t mtx;
-    /**
-     * work_ready is set by main thread and then work_signal condition is signalled.
-     */
-    bool work_ready;
-    pthread_cond_t work_signal;
-    void * (* fnc) (void *);
-    /**
-     * Pointer to dynamically allocated parameters.
-     */
-    void *params;
-} thread_t;
-
-typedef struct _pool {
-    thread_t threads[THREAD_NUM];
-    pthread_barrier_t barrier;
-} pool_t;
+struct _pool;
+typedef struct _pool pool_t;
 
 void pool_init(pool_t *pool);
 void pool_destroy(pool_t *pool);
-int pool_insert(pool_t *pool, void *(*fnc)(void *), void *arg, size_t arg_len);
+void pool_insert(pool_t *pool, void *(*fnc)(void *), void *arg, size_t arg_len);
 
 #endif /* THREAD_POOL_H_ */
