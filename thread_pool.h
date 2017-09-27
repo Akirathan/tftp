@@ -47,7 +47,7 @@ typedef struct _queue {
 	size_t head;
 	size_t tail;
 	size_t size;
-} queue_t;
+} work_queue_t;
 
 typedef struct _pool {
 	pthread_mutex_t mtx;
@@ -60,7 +60,7 @@ typedef struct _pool {
 	 */
 	pthread_cond_t cond_insertrdy;
 	pthread_t threads[THREAD_NUM];
-	queue_t queue;
+	work_queue_t queue;
 } pool_t;
 
 void pool_init(pool_t *pool);

@@ -71,10 +71,10 @@ str_from_mode(char *str, const tftp_mode_t mode)
 {
 	switch (mode) {
 	case MODE_NETASCII:
-		strcpy(str, NETASCII_STR);
+		strncpy(str, NETASCII_STR, sizeof(NETASCII_STR));
 		break;
 	case MODE_OCTET:
-		strcpy(str, OCTET_STR);
+		strncpy(str, OCTET_STR, sizeof(OCTET_STR));
 		break;
 	default:
 		break;

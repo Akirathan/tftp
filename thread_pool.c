@@ -2,12 +2,12 @@
 
 static bool debug = false;
 
-static void queue_init(queue_t *queue);
-static int queue_push(queue_t *queue, work_t *work);
-static int queue_pop(queue_t *queue, work_t *work);
+static void queue_init(work_queue_t *queue);
+static int queue_push(work_queue_t *queue, work_t *work);
+static int queue_pop(work_queue_t *queue, work_t *work);
 
 static void
-queue_init(queue_t *queue)
+queue_init(work_queue_t *queue)
 {
 	queue->head = 0;
 	queue->tail = 0;
@@ -18,7 +18,7 @@ queue_init(queue_t *queue)
  * @return EQUEUE_FULL when queue is full, 0 on success.
  */
 static int
-queue_push(queue_t *queue, work_t *work)
+queue_push(work_queue_t *queue, work_t *work)
 {
 	if (queue->head == queue->tail && queue->size != 0) {
 		return EQUEUE_FULL;
@@ -37,7 +37,7 @@ queue_push(queue_t *queue, work_t *work)
  * @return EQUEUE_EMPTY when queue is empty, 0 on success.
  */
 static int
-queue_pop(queue_t *queue, work_t *work)
+queue_pop(work_queue_t *queue, work_t *work)
 {
 	if (queue->head == queue->tail && queue->size == 0) {
 		return EQUEUE_EMPTY;
