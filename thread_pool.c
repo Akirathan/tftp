@@ -3,32 +3,6 @@
 //#define TP_TEST
 static bool debug = true;
 
-typedef struct _work {
-	void *(* func) (void *);
-	void *params;
-} work_t;
-
-typedef struct _queue {
-	work_t work_queue[QUEUE_LEN];
-	size_t head;
-	size_t tail;
-	size_t size;
-} queue_t;
-
-typedef struct _pool {
-	pthread_mutex_t mtx;
-	/**
-	 * Signalized when queue was empty and now contains work.
-	 */
-	pthread_cond_t cond_workrdy;
-	/**
-	 * Signalized when queue is full and one unit of work is popped.
-	 */
-	pthread_cond_t cond_insertrdy;
-	pthread_t threads[THREAD_NUM];
-	queue_t queue;
-} pool_t;
-
 static void queue_init(queue_t *queue);
 static int queue_push(queue_t *queue, work_t *work);
 static int queue_pop(queue_t *queue, work_t *work);
@@ -63,7 +37,7 @@ queue_push(queue_t *queue, work_t *work)
 /**
  * @return EQUEUE_EMPTY when queue is empty, 0 on success.
  */
-static int 
+static int
 queue_pop(queue_t *queue, work_t *work)
 {
 	if (queue->head == queue->tail && queue->size == 0) {

@@ -10,16 +10,12 @@
  * some thread.
  *
  * Details:
- * Initialization of every thread in pool is synchronized with a barrier, ie.
- * pool_init function does not return until every thread waits on a barrier.
  *
  * When thread is initialized, it waits for "ready to work" condition, which is signalled
  * from the main (outer) thread. It is required that pool_insert is called from an
  * outer thread ie. thread that is not from the pool.
  *
- * pool_insert finds first non-working thread (tries to lock its mutex), assigns
- * function to this thread and signals "ready to work" condition. Parameters for
- * the function are copied into dynamically allocated memory.
+ * Parameters for the function are copied into dynamically allocated memory.
  *
  */
 
@@ -41,8 +37,31 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-struct _pool;
-typedef struct _pool pool_t;
+typedef struct _work {
+	void *(* func) (void *);
+	void *params;
+} work_t;
+
+typedef struct _queue {
+	work_t work_queue[QUEUE_LEN];
+	size_t head;
+	size_t tail;
+	size_t size;
+} queue_t;
+
+typedef struct _pool {
+	pthread_mutex_t mtx;
+	/**
+	 * Signalized when queue was empty and now contains work.
+	 */
+	pthread_cond_t cond_workrdy;
+	/**
+	 * Signalized when queue is full and one unit of work is popped.
+	 */
+	pthread_cond_t cond_insertrdy;
+	pthread_t threads[THREAD_NUM];
+	queue_t queue;
+} pool_t;
 
 void pool_init(pool_t *pool);
 void pool_destroy(pool_t *pool);
