@@ -6,14 +6,14 @@
  *
  * Usage:
  * Statically allocated thread pool. First pool_init must be called to initialize
- * the thread pool, then pool_insert function can be called to assign function to
- * some thread.
+ * the thread pool, then pool_insert function can be called to enqueue function
+ * into working queue.
  *
  * Details:
- *
- * When thread is initialized, it waits for "ready to work" condition, which is signalled
- * from the main (outer) thread. It is required that pool_insert is called from an
- * outer thread ie. thread that is not from the pool.
+ * Threads are created in pool_init and waiting for "work-ready" signal after return.
+ * If the queue is empty and first work is inserted, "work-ready" signal is broadcasted.
+ * If the queue is full and work is popped from the queue, "insert-ready" signal is
+ * signaled to the main thread.
  *
  * Parameters for the function are copied into dynamically allocated memory.
  *

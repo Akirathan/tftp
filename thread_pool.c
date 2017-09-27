@@ -55,7 +55,8 @@ queue_pop(queue_t *queue, work_t *work)
 
 
 /**
- * When this function is called, mtx may or may not be locked.
+ * Tries to free params.
+ * @param arg work.
  */
 static void
 thread_cleanupwork(void *arg)
@@ -69,6 +70,8 @@ thread_cleanupwork(void *arg)
 
 /**
  * Tries to unlock mutex.
+ * Note that this function is called from every thread, but just one thread
+ * holds the mutex.
  * @param arg pool.
  */
 static void
@@ -76,8 +79,8 @@ thread_cleanupmtx(void *arg)
 {
 	pool_t *pool = (pool_t *) arg;
 
-	/* If mutex is not locked by this thread (or not locked at all) return error.,
-	 * otherwise unlocks the mutex. Note that mutex is of ERROR_CHECK type. */
+	/* If mutex is not locked by this thread (or not locked at all) return error.
+	 * Otherwise unlock the mutex. Note that mutex is of ERROR_CHECK type. */
 	(void) pthread_mutex_unlock(&pool->mtx);
 }
 
@@ -101,7 +104,7 @@ thread_routine(void *arg)
 			printf("Non-main: Pop.\n");
 		queue_pop(&pool->queue, &work);
 		if (pool->queue.size == QUEUE_LEN - 1) {
-			/* Signal main thread that the queue is not full anymore. */
+			/* Signal to main thread that the queue is not full anymore. */
 			if (debug)
 				printf("Non-main: Signal cond_insertrdy.\n");
 			pthread_cond_signal(&pool->cond_insertrdy);
@@ -155,7 +158,7 @@ pool_init(pool_t *pool)
 }
 
 /**
- * Assigns function fnc to any non-working thread.
+ * Enqueues function into working queue.
  */
 void
 pool_insert(pool_t *pool, void *(*fnc)(void *), void *arg, size_t arg_len)
